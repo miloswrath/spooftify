@@ -27,14 +27,5 @@
         packages = with pkgs; [node2nix nodejs nodePackages.pnpm yarn uv ]; # Added uv so we can use spec-kit
       };
     });
-    postShellHook = ''
-      KERNEL_NAME="jl-313"
-      KERNEL_DIR="$HOME/.local/share/jupyter/kernels/$KERNEL_NAME"
-      if [ ! -d "$KERNEL_DIR" ]; then
-        python -m ipykernel install --user \
-          --name "$KERNEL_NAME" \
-          --display-name "Python 3.13 (flake)" >/dev/null
-      fi
-    '';
   };
 }
