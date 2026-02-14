@@ -1,50 +1,60 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: template placeholder -> 1.0.0
+- Modified principles: N/A (template placeholders replaced)
+- Added sections: Core Principles (3), Security Requirements, Development Workflow & Quality Gates
+- Removed sections: None
+- Templates requiring updates:
+  - ✅ .specify/templates/plan-template.md
+  - ✅ .specify/templates/spec-template.md
+  - ✅ .specify/templates/tasks-template.md
+  - ⚠ .specify/templates/commands/*.md (directory not present)
+- Follow-up TODOs:
+  - TODO(RATIFICATION_DATE): original adoption date not found in repo
+-->
+# Spooftify Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Comprehensive Testing & PR Gates
+Testing MUST cover all primary functions of the application. Every PR MUST run the
+full test suite via GitHub Actions, and merges are blocked on failures or missing
+tests for new/changed primary behavior.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Secret Hygiene & Env File Safety
+Private keys and secrets MUST never be committed, logged, or shared. Use `.envrc`
+for non-secret defaults and `.envrc.local` for secrets; `.envrc.local` MUST be
+gitignored and never referenced in documentation or logs.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. MVP-Only Simplicity
+The project MUST stay MVP-focused: avoid production-scale plans, premature
+optimization, and unnecessary complexity. Anything beyond MVP scope requires an
+explicit, written justification in the plan.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+## Security Requirements
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+- Secrets MUST be stored only in local env files or approved secret stores.
+- `.envrc.local` MUST remain untracked; `.envrc` MUST not contain private keys.
+- Logs and error messages MUST redact or avoid secrets entirely.
+- If a secret is exposed, rotate it immediately and document the incident.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Development Workflow & Quality Gates
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- GitHub Actions MUST run the full test suite on every PR.
+- Primary user flows MUST have automated tests (unit/integration/contract as
+  appropriate).
+- Any change to primary behavior MUST include test updates in the same PR.
+- Exceptions require documented approval in the implementation plan.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution is the highest authority; all specs, plans, and tasks MUST
+  conform.
+- Amendments require a PR updating this file and any dependent templates, plus a
+  rationale in the PR description.
+- Versioning follows semantic versioning: MAJOR for breaking governance changes,
+  MINOR for new principles or material expansions, PATCH for clarifications.
+- Compliance is checked during planning (Constitution Check) and again during PR
+  review; exceptions must be recorded with a justification.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date not found in repo | **Last Amended**: 2026-02-14

@@ -7,6 +7,8 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
+**Constitution Gate**: Primary user flows MUST have automated tests.
+
 <!--
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
@@ -74,6 +76,11 @@
 
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
+
+## Scope Boundaries (MVP Only) *(mandatory)*
+
+- Explicitly list what is **out of scope** to avoid production-scale planning.
+- Any non-MVP work requires written justification in the plan.
 
 ## Requirements *(mandatory)*
 
