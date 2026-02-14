@@ -27,5 +27,9 @@
         packages = with pkgs; [node2nix nodejs nodePackages.pnpm yarn uv ]; # Added uv so we can use spec-kit
       };
     });
+    shellHook = '' 
+    export CODEX_HOME = /home/zak/school/s26/iproj/spooftify/spoof-spec/.codex
+    '';
+
   };
 }
