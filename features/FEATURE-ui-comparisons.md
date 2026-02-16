@@ -125,20 +125,20 @@ tests, and clear implementation constraints.
   colocated test file under `src/features/comparison/`.
 
 ***Checkpoint 2: Base Comparison UI in App Flow***
-- [ ] Replace comparison stub in `src/App.tsx` with a real round UI scaffold:
+- [x] Replace comparison stub in `src/App.tsx` with a real round UI scaffold:
   progress indicator (`Round X of 5`), two comparison cards, and disabled
   state before valid track data.
-- [ ] Keep chat stage handoff simple (existing button) but initialize a fresh
+- [x] Keep chat stage handoff simple (existing button) but initialize a fresh
   comparison session when entering compare stage.
-- [ ] Update `src/App.component.test.tsx` to assert transition into a rendered
+- [x] Update `src/App.component.test.tsx` to assert transition into a rendered
   comparison round state (not stub text).
 
 ***Checkpoint 3: Selection Interactions (Tap + Swipe)***
-- [ ] Implement tap selection on each track card and explicit action zones to
+- [x] Implement tap selection on each track card and explicit action zones to
   ensure thumb-friendly mobile interaction.
-- [ ] Implement left/right swipe gesture support mapped to the same selection
+- [x] Implement left/right swipe gesture support mapped to the same selection
   handlers used by tap to avoid divergent logic paths.
-- [ ] Add component/integration tests for both tap and swipe selection, ensuring
+- [x] Add component/integration tests for both tap and swipe selection, ensuring
   one choice advances exactly one round and persists the selected track.
 
 ***Checkpoint 4: Round Progression + Finalization Gate***

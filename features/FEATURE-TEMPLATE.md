@@ -7,7 +7,7 @@
 
 ### DELETE THIS!!
 After the above run the following with this file and constitution.md loaded into AI context:
-> Using this basic list of requirements, ask me questions to clear up ANY ambiguity. With those, then rewrite the requirements to have greater depth reread constitution to make sure you understand project goals as well
+> Using this basic list of requirements, ask me questions to clear up ANY ambiguity. With those, then rewrite the requirements to have greater depth reread constitution to make sure you understand project goals as well. Add these new requirements to the md file.
 ^^ Review these
 > Create an implementation plan like the below
 > ***{Checkpoint name}***
