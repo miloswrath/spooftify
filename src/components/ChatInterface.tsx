@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface ChatMessage {
   id: string;
@@ -23,8 +23,24 @@ export function ChatInterface({
   showContinue = false
 }: ChatInterfaceProps) {
   const [draft, setDraft] = useState("");
+  const messageContainerRef = useRef<HTMLDivElement>(null);
 
   const canSend = useMemo(() => draft.trim().length > 0 && !isThinking, [draft, isThinking]);
+
+  useEffect(() => {
+    const container = messageContainerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    if (typeof container.scrollTo === "function") {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      return;
+    }
+
+    container.scrollTop = container.scrollHeight;
+  }, [messages, isThinking]);
 
   function handleSend() {
     const nextMessage = draft.trim();
@@ -52,6 +68,7 @@ export function ChatInterface({
     >
       <div
         aria-label="chat-messages"
+        ref={messageContainerRef}
         style={{
           flex: 1,
           minHeight: 0,
@@ -80,6 +97,24 @@ export function ChatInterface({
             {message.content}
           </article>
         ))}
+
+        {isThinking ? (
+          <article
+            aria-label="thinking-indicator"
+            data-message-role="assistant-thinking"
+            style={{
+              alignSelf: "flex-start",
+              maxWidth: "85%",
+              padding: "10px 12px",
+              borderRadius: "12px",
+              border: "1px dashed #d1d5db",
+              background: "#f9fafb",
+              color: "#4b5563"
+            }}
+          >
+            Thinking...
+          </article>
+        ) : null}
       </div>
 
       <div

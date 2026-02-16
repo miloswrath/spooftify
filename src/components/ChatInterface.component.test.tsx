@@ -134,4 +134,95 @@ describe("ChatInterface", () => {
 
     expect(input.value).toBe("");
   });
+
+  it("shows thinking indicator when isThinking is true", () => {
+    render(
+      <ChatInterface
+        messages={[{ id: "assistant-1", role: "assistant", content: "Give me a sec." }]}
+        onSendMessage={vi.fn()}
+        isThinking
+      />
+    );
+
+    expect(screen.getByLabelText("thinking-indicator")).toBeTruthy();
+    expect(screen.getByText("Thinking...")).toBeTruthy();
+  });
+
+  it("keeps send button disabled during thinking state", async () => {
+    const user = userEvent.setup();
+
+    render(<ChatInterface messages={[]} onSendMessage={vi.fn()} isThinking />);
+
+    const input = screen.getByLabelText("message-input");
+    const sendButton = screen.getByRole("button", { name: "send-message" }) as HTMLButtonElement;
+
+    await user.type(input, "still waiting");
+
+    expect(sendButton.disabled).toBe(true);
+  });
+
+  it("auto-scrolls to latest message when message list changes", () => {
+    const { rerender } = render(
+      <ChatInterface
+        messages={[{ id: "1", role: "assistant", content: "First message" }]}
+        onSendMessage={vi.fn()}
+        isThinking={false}
+      />
+    );
+
+    const messageContainer = screen.getByLabelText("chat-messages") as HTMLDivElement;
+
+    Object.defineProperty(messageContainer, "scrollHeight", {
+      configurable: true,
+      value: 420
+    });
+
+    messageContainer.scrollTop = 0;
+
+    rerender(
+      <ChatInterface
+        messages={[
+          { id: "1", role: "assistant", content: "First message" },
+          { id: "2", role: "user", content: "Second message" }
+        ]}
+        onSendMessage={vi.fn()}
+        isThinking={false}
+      />
+    );
+
+    expect(messageContainer.scrollTop).toBe(420);
+  });
+
+  it("shows continue button when showContinue is true", () => {
+    render(
+      <ChatInterface
+        messages={[]}
+        onSendMessage={vi.fn()}
+        isThinking={false}
+        showContinue
+        onContinue={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "continue-to-comparison" })).toBeTruthy();
+  });
+
+  it("calls onContinue when continue button is clicked", async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+
+    render(
+      <ChatInterface
+        messages={[]}
+        onSendMessage={vi.fn()}
+        isThinking={false}
+        showContinue
+        onContinue={onContinue}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "continue-to-comparison" }));
+
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
 });

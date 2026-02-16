@@ -3,6 +3,7 @@ import { ChatInterface, type ChatMessage } from "./components/ChatInterface";
 
 export function App() {
   const [step, setStep] = useState<"chat" | "compare">("chat");
+  const [isThinking, setIsThinking] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "assistant-welcome",
@@ -19,7 +20,22 @@ export function App() {
     };
 
     setMessages((previous) => [...previous, message]);
+    setIsThinking(true);
+
+    setTimeout(() => {
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          role: "assistant",
+          content: "Nice vibe. I can grab two tracks for your comparison next."
+        }
+      ]);
+      setIsThinking(false);
+    }, 600);
   }
+
+  const hasUserMessage = messages.some((message) => message.role === "user");
 
   return (
     <main
@@ -37,8 +53,8 @@ export function App() {
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
-            isThinking={false}
-            showContinue
+            isThinking={isThinking}
+            showContinue={hasUserMessage}
             onContinue={() => setStep("compare")}
           />
         </section>
