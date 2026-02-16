@@ -182,4 +182,8 @@ verifying a judgement is returned without errors.
 - **SC-004**: Median AI usage cost per completed session is at or below $0.02
   (adjustable during planning).
 
+<<<<<<< HEAD
 **Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date not found in repo | **Last Amended**: 2026-02-14
+=======
+**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date not found in repo | **Last Amended**: 2026-02-14
+>>>>>>> 956bf5cee38784c789f5b6f1c67b92280ac2ca8b
