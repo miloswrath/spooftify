@@ -22,7 +22,7 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
   await expect(page.getByText("Round 1 of 5")).toBeVisible();
   await expectNoHorizontalScroll(page);
 
-  await page.getByLabel("left-track-option").click();
+  await page.getByRole("button", { name: "choose-left-track" }).click();
 
   await expect(page.getByText("Round 2 of 5")).toBeVisible();
   await expectNoHorizontalScroll(page);

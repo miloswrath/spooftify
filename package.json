@@ -12,7 +12,9 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:api": "vitest run --config vitest.api.config.ts",
     "test:e2e": "playwright test",
-    "test:ci": "pnpm test && pnpm test:e2e"
+    "test:e2e:nix": "LIBGBM_PATH=\"$(nix eval --raw nixpkgs#libgbm.outPath)/lib\" && LD_LIBRARY_PATH=\"$LIBGBM_PATH:$LD_LIBRARY_PATH\" playwright test",
+    "test:ci": "pnpm test && pnpm test:e2e",
+    "test:ci:nix": "pnpm test && pnpm test:e2e:nix"
   },
   "keywords": [],
   "author": "",

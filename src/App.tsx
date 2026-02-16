@@ -297,7 +297,6 @@ export function App() {
                       <iframe
                         title={`${side}-spotify-embed`}
                         src={option.embedUrl}
-                        onError={() => handleEmbedError(side)}
                         width="100%"
                         height="232"
                         style={{ border: "none", borderRadius: "12px" }}
@@ -320,6 +319,23 @@ export function App() {
                         }}
                       >
                         Choose {side === "left" ? "Top" : "Bottom"} track
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`report-${side}-embed-unavailable`}
+                        disabled={comparisonComplete}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEmbedError(side);
+                        }}
+                        style={{
+                          marginTop: "8px",
+                          minHeight: "36px",
+                          padding: "8px 10px",
+                          width: "100%"
+                        }}
+                      >
+                        This embed is unavailable
                       </button>
                     </>
                   ) : (

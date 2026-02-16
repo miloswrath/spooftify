@@ -203,7 +203,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Continue to comparison" }));
 
-    fireEvent.error(screen.getByTitle("left-spotify-embed"));
+    await user.click(screen.getByRole("button", { name: "report-left-embed-unavailable" }));
 
     expect(screen.getByLabelText("embed-retry-state")).toBeTruthy();
 
