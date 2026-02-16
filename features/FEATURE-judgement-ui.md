@@ -74,49 +74,49 @@ This feature directly supports:
   - Text rendering: component displays provided `judgement` prop correctly
   - Responsive snapshot test on mobile and desktop viewports
 
-### Checkpoint 2: Loading & Error States
+### Checkpoint 2: Loading & Error States ✅
 
 **Goal**: Implement loading spinner and error handling UI.
 
-- [ ] Add loading spinner logic to `JudgementDisplay.tsx`
+- [x] Add loading spinner logic to `JudgementDisplay.tsx`
   - Show spinner when `isLoading === true`
   - Display "Generating your judgement..." placeholder text while loading
   - Hide spinner when judgement text arrives
-- [ ] Add error state UI
+- [x] Add error state UI
   - If `error` prop is provided, display error message instead of judgement
   - Show "Retry" button that calls `onRetry()` callback
   - Error message is user-friendly, no stack traces or API details
-- [ ] **Test**: Unit tests for state transitions
+- [x] **Test**: Unit tests for state transitions
   - Test loading spinner visibility when `isLoading` is true/false
   - Test error message appears when `error` prop is set
   - Test "Retry" button fires `onRetry()` callback on click
 
-### Checkpoint 3: Session Reset Button & Integration
+### Checkpoint 3: Session Reset Button & Integration ✅
 
 **Goal**: Add "Start New Session" button and prepare for parent integration.
 
-- [ ] Add "Start New Session" button below or adjacent to judgement box
+- [x] Add "Start New Session" button below or adjacent to judgement box
   - Button text is clear and actionable
   - Button calls `onNewSession()` callback on click
   - Button is keyboard accessible and always visible (no scrolling required on mobile)
-- [ ] Verify button spacing and layout don't overflow on mobile
-- [ ] **Test**: Unit tests for button interactions
+- [x] Verify button spacing and layout don't overflow on mobile
+- [x] **Test**: Unit tests for button interactions
   - Test "Start New Session" button appears and is clickable
   - Test `onNewSession()` callback fires when button is clicked
 
-### Checkpoint 4: Integration & End-to-End Testing
+### Checkpoint 4: Integration & End-to-End Testing ✅
 
 **Goal**: Connect to the parent session flow and validate the complete path.
 
-- [ ] Integrate `JudgementDisplay` into the main session component/page
+- [x] Integrate `JudgementDisplay` into the main session component/page
   - Wire up AI judgement output from the LLM service
   - Wire up error handling and retry logic
   - Wire up session reset to return to chat
-- [ ] Test the full flow in manual testing or Playwright e2e tests
+- [x] Test the full flow in manual testing or Playwright e2e tests
   - Chat → Comparison → Judgement (with placeholder, actual AI integration in progress)
   - Verify judgement displays and buttons work end-to-end on mobile
   - Verify no horizontal scrolling on mobile
-- [ ] **Test**: E2E or integration test
+- [x] **Test**: E2E or integration test
   - Run through the judgement screen display, loading, and session reset
   - Verify all states are reachable and responsive on 375px viewport
 
