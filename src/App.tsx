@@ -1,9 +1,11 @@
 import { type TouchEvent, useEffect, useState } from "react";
 import {
   COMPARISON_TOTAL_ROUNDS,
+  loadComparisonSession,
   saveRoundChoice,
   startNewComparisonSession,
-  type ComparisonRoundIndex
+  type ComparisonRoundIndex,
+  type ComparisonSessionState
 } from "./features/comparison";
 
 interface TrackOption {
@@ -40,11 +42,52 @@ const nextRoundIndex = (currentRound: ComparisonRoundIndex): ComparisonRoundInde
   return (currentRound + 1) as ComparisonRoundIndex;
 };
 
+const getProgressFromSession = (
+  session: ComparisonSessionState | null
+): { currentRound: ComparisonRoundIndex; comparisonComplete: boolean } => {
+  if (!session || session.choices.length === 0) {
+    return {
+      currentRound: 1,
+      comparisonComplete: false
+    };
+  }
+
+  const completedRounds = new Set(
+    session.choices.map((choice) => choice.roundIndex)
+  ).size;
+
+  if (completedRounds >= COMPARISON_TOTAL_ROUNDS) {
+    return {
+      currentRound: COMPARISON_TOTAL_ROUNDS as ComparisonRoundIndex,
+      comparisonComplete: true
+    };
+  }
+
+  return {
+    currentRound: nextRoundIndex(completedRounds as ComparisonRoundIndex),
+    comparisonComplete: false
+  };
+};
+
 export function App() {
   const [step, setStep] = useState<"chat" | "compare">("chat");
   const [comparisonPair, setComparisonPair] = useState<ComparisonPair | null>(null);
   const [currentRound, setCurrentRound] = useState<ComparisonRoundIndex>(1);
+  const [comparisonComplete, setComparisonComplete] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  useEffect(() => {
+    const session = loadComparisonSession();
+
+    if (!session) {
+      return;
+    }
+
+    const progress = getProgressFromSession(session);
+    setCurrentRound(progress.currentRound);
+    setComparisonComplete(progress.comparisonComplete);
+    setStep("compare");
+  }, []);
 
   useEffect(() => {
     if (step !== "compare") {
@@ -58,6 +101,7 @@ export function App() {
     startNewComparisonSession();
     setComparisonPair(null);
     setCurrentRound(1);
+    setComparisonComplete(false);
     setStep("compare");
   };
 
@@ -65,11 +109,17 @@ export function App() {
     const left = comparisonPair?.left;
     const right = comparisonPair?.right;
 
-    if (!left?.id || !left.embedUrl || !right?.id || !right.embedUrl) {
+    if (
+      comparisonComplete ||
+      !left?.id ||
+      !left.embedUrl ||
+      !right?.id ||
+      !right.embedUrl
+    ) {
       return;
     }
 
-    saveRoundChoice({
+    const nextSession = saveRoundChoice({
       roundIndex: currentRound,
       leftTrackId: left.id,
       rightTrackId: right.id,
@@ -77,7 +127,9 @@ export function App() {
       selectedAt: new Date().toISOString()
     });
 
-    setCurrentRound((previousRound) => nextRoundIndex(previousRound));
+    const progress = getProgressFromSession(nextSession);
+    setCurrentRound(progress.currentRound);
+    setComparisonComplete(progress.comparisonComplete);
   };
 
   const handleComparisonTouchStart = (event: TouchEvent<HTMLElement>) => {
@@ -130,7 +182,9 @@ export function App() {
           onTouchStart={handleComparisonTouchStart}
           onTouchEnd={handleComparisonTouchEnd}
         >
-          <p>Round {currentRound} of {COMPARISON_TOTAL_ROUNDS}</p>
+          <p>
+            Round {currentRound} of {COMPARISON_TOTAL_ROUNDS}
+          </p>
           <div
             style={{
               display: "grid",
@@ -138,39 +192,40 @@ export function App() {
               gridTemplateColumns: "1fr"
             }}
           >
-            {["left", "right"].map((side) => {
+            {(["left", "right"] as const).map((side) => {
               const option = side === "left" ? comparisonPair?.left : comparisonPair?.right;
               const hasValidTrackData = Boolean(option?.id && option.embedUrl);
+              const canSelect = hasValidTrackData && !comparisonComplete;
 
               return (
                 <article
                   key={side}
                   aria-label={`${side}-track-option`}
                   role="button"
-                  aria-disabled={!hasValidTrackData}
-                  tabIndex={hasValidTrackData ? 0 : -1}
+                  aria-disabled={!canSelect}
+                  tabIndex={canSelect ? 0 : -1}
                   onClick={() => {
-                    if (!hasValidTrackData) {
+                    if (!canSelect) {
                       return;
                     }
 
-                    handleSelectTrack(side as "left" | "right");
+                    handleSelectTrack(side);
                   }}
                   onKeyDown={(event) => {
-                    if (!hasValidTrackData) {
+                    if (!canSelect) {
                       return;
                     }
 
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      handleSelectTrack(side as "left" | "right");
+                      handleSelectTrack(side);
                     }
                   }}
                   style={{
                     border: "1px solid #d4d4d4",
                     borderRadius: "12px",
                     padding: "16px",
-                    opacity: hasValidTrackData ? 1 : 0.6
+                    opacity: canSelect ? 1 : 0.6
                   }}
                 >
                   <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>
@@ -190,9 +245,10 @@ export function App() {
                       <button
                         type="button"
                         aria-label={`choose-${side}-track`}
+                        disabled={!canSelect}
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleSelectTrack(side as "left" | "right");
+                          handleSelectTrack(side);
                         }}
                         style={{
                           marginTop: "12px",
@@ -222,6 +278,16 @@ export function App() {
               );
             })}
           </div>
+          <p aria-label="comparison-complete-state" style={{ marginTop: "16px" }}>
+            Comparison complete: {comparisonComplete ? "true" : "false"}
+          </p>
+          <button
+            type="button"
+            aria-label="trigger-final-judgement"
+            disabled={!comparisonComplete}
+          >
+            Generate final judgement
+          </button>
         </section>
       )}
     </main>

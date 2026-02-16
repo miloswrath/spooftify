@@ -118,4 +118,80 @@ describe("App", () => {
       chosenTrackId: LEFT_TRACK_ID
     });
   });
+
+  it("keeps final judgement trigger blocked until round 5 is completed", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Continue to comparison" }));
+
+    const finalJudgementTrigger = screen.getByRole("button", {
+      name: "trigger-final-judgement"
+    });
+
+    expect((finalJudgementTrigger as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
+      "Comparison complete: false"
+    );
+
+    for (let completedRounds = 1; completedRounds < COMPARISON_TOTAL_ROUNDS; completedRounds += 1) {
+      await user.click(screen.getByLabelText("left-track-option"));
+    }
+
+    expect(
+      screen.getByText(`Round ${COMPARISON_TOTAL_ROUNDS} of ${COMPARISON_TOTAL_ROUNDS}`)
+    ).toBeTruthy();
+    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
+      "Comparison complete: false"
+    );
+    expect((finalJudgementTrigger as HTMLButtonElement).disabled).toBe(true);
+
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
+      "Comparison complete: true"
+    );
+    expect((finalJudgementTrigger as HTMLButtonElement).disabled).toBe(false);
+
+    const storedSession = JSON.parse(
+      window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
+    );
+
+    expect(storedSession.choices).toHaveLength(COMPARISON_TOTAL_ROUNDS);
+    expect(storedSession.choices.at(-1)).toMatchObject({
+      roundIndex: COMPARISON_TOTAL_ROUNDS,
+      chosenTrackId: LEFT_TRACK_ID
+    });
+  });
+
+  it("rehydrates round progress from localStorage after refresh", async () => {
+    const user = userEvent.setup();
+
+    const firstRender = render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Continue to comparison" }));
+    await user.click(screen.getByLabelText("left-track-option"));
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    firstRender.unmount();
+
+    render(<App />);
+
+    expect(screen.getByLabelText("comparison-stage")).toBeTruthy();
+    expect(
+      screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)
+    ).toBeTruthy();
+    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
+      "Comparison complete: false"
+    );
+
+    const storedSession = JSON.parse(
+      window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
+    );
+
+    expect(storedSession.choices).toHaveLength(2);
+    expect(storedSession.choices[0]).toMatchObject({ roundIndex: 1 });
+    expect(storedSession.choices[1]).toMatchObject({ roundIndex: 2 });
+  });
 });
