@@ -101,6 +101,8 @@ export function ChatInterface({
         {isThinking ? (
           <article
             aria-label="thinking-indicator"
+            role="status"
+            aria-live="polite"
             data-message-role="assistant-thinking"
             style={{
               alignSelf: "flex-start",
@@ -132,6 +134,12 @@ export function ChatInterface({
             type="text"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                handleSend();
+              }
+            }}
             style={{
               flex: 1,
               minHeight: "44px",

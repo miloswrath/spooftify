@@ -225,4 +225,54 @@ describe("ChatInterface", () => {
 
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
+
+  it("sends message when Enter is pressed in input", async () => {
+    const user = userEvent.setup();
+    const onSendMessage = vi.fn();
+
+    render(<ChatInterface messages={[]} onSendMessage={onSendMessage} isThinking={false} />);
+
+    const input = screen.getByLabelText("message-input");
+
+    await user.type(input, "shoegaze and rain");
+    await user.keyboard("{Enter}");
+
+    expect(onSendMessage).toHaveBeenCalledTimes(1);
+    expect(onSendMessage).toHaveBeenCalledWith("shoegaze and rain");
+  });
+
+  it("supports keyboard tab navigation across input and send controls", async () => {
+    const user = userEvent.setup();
+
+    render(<ChatInterface messages={[]} onSendMessage={vi.fn()} isThinking={false} />);
+
+    await user.tab();
+    const input = screen.getByLabelText("message-input");
+    expect(input).toBe(document.activeElement);
+
+    await user.type(input, "keyboard flow");
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "send-message" })).toBe(document.activeElement);
+  });
+
+  it("uses mobile-friendly touch target sizing for input and buttons", () => {
+    render(
+      <ChatInterface
+        messages={[]}
+        onSendMessage={vi.fn()}
+        isThinking={false}
+        showContinue
+        onContinue={vi.fn()}
+      />
+    );
+
+    const input = screen.getByLabelText("message-input");
+    const sendButton = screen.getByRole("button", { name: "send-message" });
+    const continueButton = screen.getByRole("button", { name: "continue-to-comparison" });
+
+    expect(input.getAttribute("style")).toContain("min-height: 44px");
+    expect(sendButton.getAttribute("style")).toContain("min-height: 44px");
+    expect(continueButton.getAttribute("style")).toContain("min-height: 44px");
+  });
 });
