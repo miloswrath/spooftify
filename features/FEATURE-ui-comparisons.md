@@ -142,19 +142,19 @@ tests, and clear implementation constraints.
   one choice advances exactly one round and persists the selected track.
 
 ***Checkpoint 4: Round Progression + Finalization Gate***
-- [ ] Implement deterministic round progression from `1` to `5` with saved
+- [x] Implement deterministic round progression from `1` to `5` with saved
   choices per round and refresh-safe rehydration.
-- [ ] Block final judgement trigger until round `5` is completed; expose a clear
+- [x] Block final judgement trigger until round `5` is completed; expose a clear
   `comparisonComplete` state output for downstream judgement flow.
-- [ ] Add integration tests validating full 5-round progression and that final
+- [x] Add integration tests validating full 5-round progression and that final
   completion state is unreachable before the last round.
 
 ***Checkpoint 5: Embed Placeholder + Retry/Error State***
-- [ ] Add Spotify iframe placeholders (example links) in each card with
+- [x] Add Spotify iframe placeholders (example links) in each card with
   responsive sizing for mobile and side-by-side desktop behavior.
-- [ ] Add an unavailable/unplayable embed state with a retry action that refreshes
+- [x] Add an unavailable/unplayable embed state with a retry action that refreshes
   pair data for the current round.
-- [ ] Add component/integration tests for retry flow: failed state renders,
+- [x] Add component/integration tests for retry flow: failed state renders,
   retry action runs, and round remains blocked until two valid options exist.
 
 ***Checkpoint 6: Mobile-First Regression + E2E Smoke Update***

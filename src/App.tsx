@@ -19,20 +19,45 @@ interface ComparisonPair {
   right: TrackOption;
 }
 
-const EXAMPLE_COMPARISON_PAIR: ComparisonPair = {
-  left: {
-    id: "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
-    title: "Option A",
-    embedUrl: "https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC"
+type ComparisonSide = "left" | "right";
+
+const EXAMPLE_COMPARISON_PAIRS: ComparisonPair[] = [
+  {
+    left: {
+      id: "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
+      title: "Option A",
+      embedUrl: "https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC"
+    },
+    right: {
+      id: "spotify:track:1301WleyT98MSxVHPZCA6M",
+      title: "Option B",
+      embedUrl: "https://open.spotify.com/embed/track/1301WleyT98MSxVHPZCA6M"
+    }
   },
-  right: {
-    id: "spotify:track:1301WleyT98MSxVHPZCA6M",
-    title: "Option B",
-    embedUrl: "https://open.spotify.com/embed/track/1301WleyT98MSxVHPZCA6M"
+  {
+    left: {
+      id: "spotify:track:5ChkMS8OtdzJeqyybCc9R5",
+      title: "Option C",
+      embedUrl: "https://open.spotify.com/embed/track/5ChkMS8OtdzJeqyybCc9R5"
+    },
+    right: {
+      id: "spotify:track:3AJwUDP919kvQ9QcozQPxg",
+      title: "Option D",
+      embedUrl: "https://open.spotify.com/embed/track/3AJwUDP919kvQ9QcozQPxg"
+    }
   }
-};
+];
 
 const SWIPE_THRESHOLD_PX = 40;
+
+const getComparisonPairForRound = (
+  roundIndex: ComparisonRoundIndex,
+  retryAttempt: number
+): ComparisonPair => {
+  const pairIndex = (roundIndex - 1 + retryAttempt) % EXAMPLE_COMPARISON_PAIRS.length;
+
+  return EXAMPLE_COMPARISON_PAIRS[pairIndex];
+};
 
 const nextRoundIndex = (currentRound: ComparisonRoundIndex): ComparisonRoundIndex => {
   if (currentRound >= COMPARISON_TOTAL_ROUNDS) {
@@ -74,6 +99,11 @@ export function App() {
   const [comparisonPair, setComparisonPair] = useState<ComparisonPair | null>(null);
   const [currentRound, setCurrentRound] = useState<ComparisonRoundIndex>(1);
   const [comparisonComplete, setComparisonComplete] = useState(false);
+  const [pairRetryAttempt, setPairRetryAttempt] = useState(0);
+  const [embedFailures, setEmbedFailures] = useState<Record<ComparisonSide, boolean>>({
+    left: false,
+    right: false
+  });
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   useEffect(() => {
@@ -94,23 +124,27 @@ export function App() {
       return;
     }
 
-    setComparisonPair(EXAMPLE_COMPARISON_PAIR);
-  }, [step]);
+    setComparisonPair(getComparisonPairForRound(currentRound, pairRetryAttempt));
+  }, [step, currentRound, pairRetryAttempt]);
 
   const handleContinueToComparison = () => {
     startNewComparisonSession();
     setComparisonPair(null);
     setCurrentRound(1);
     setComparisonComplete(false);
+    setPairRetryAttempt(0);
+    setEmbedFailures({ left: false, right: false });
     setStep("compare");
   };
 
-  const handleSelectTrack = (side: "left" | "right") => {
+  const handleSelectTrack = (side: ComparisonSide) => {
     const left = comparisonPair?.left;
     const right = comparisonPair?.right;
+    const hasEmbedFailure = embedFailures.left || embedFailures.right;
 
     if (
       comparisonComplete ||
+      hasEmbedFailure ||
       !left?.id ||
       !left.embedUrl ||
       !right?.id ||
@@ -130,6 +164,20 @@ export function App() {
     const progress = getProgressFromSession(nextSession);
     setCurrentRound(progress.currentRound);
     setComparisonComplete(progress.comparisonComplete);
+    setPairRetryAttempt(0);
+    setEmbedFailures({ left: false, right: false });
+  };
+
+  const handleEmbedError = (side: ComparisonSide) => {
+    setEmbedFailures((previousFailures) => ({
+      ...previousFailures,
+      [side]: true
+    }));
+  };
+
+  const handleRetryPair = () => {
+    setPairRetryAttempt((previousAttempt) => previousAttempt + 1);
+    setEmbedFailures({ left: false, right: false });
   };
 
   const handleComparisonTouchStart = (event: TouchEvent<HTMLElement>) => {
@@ -157,6 +205,16 @@ export function App() {
 
     handleSelectTrack("left");
   };
+
+  const hasValidPairData = Boolean(
+    comparisonPair?.left.id &&
+      comparisonPair.left.embedUrl &&
+      comparisonPair?.right.id &&
+      comparisonPair.right.embedUrl
+  );
+  const hasEmbedFailure = embedFailures.left || embedFailures.right;
+  const showRetryState = step === "compare" && (!hasValidPairData || hasEmbedFailure);
+  const canSelectRound = !comparisonComplete && hasValidPairData && !hasEmbedFailure;
 
   return (
     <main
@@ -195,7 +253,7 @@ export function App() {
             {(["left", "right"] as const).map((side) => {
               const option = side === "left" ? comparisonPair?.left : comparisonPair?.right;
               const hasValidTrackData = Boolean(option?.id && option.embedUrl);
-              const canSelect = hasValidTrackData && !comparisonComplete;
+              const canSelect = hasValidTrackData && canSelectRound;
 
               return (
                 <article
@@ -236,6 +294,7 @@ export function App() {
                       <iframe
                         title={`${side}-spotify-embed`}
                         src={option.embedUrl}
+                        onError={() => handleEmbedError(side)}
                         width="100%"
                         height="232"
                         style={{ border: "none", borderRadius: "12px" }}
@@ -278,6 +337,24 @@ export function App() {
               );
             })}
           </div>
+          {showRetryState ? (
+            <div
+              aria-label="embed-retry-state"
+              style={{
+                border: "1px solid #f59e0b",
+                borderRadius: "12px",
+                marginTop: "16px",
+                padding: "12px"
+              }}
+            >
+              <p style={{ margin: "0 0 8px" }}>
+                One or both Spotify embeds are unavailable. Retry to load a new pair.
+              </p>
+              <button type="button" aria-label="retry-comparison-pair" onClick={handleRetryPair}>
+                Retry pair
+              </button>
+            </div>
+          ) : null}
           <p aria-label="comparison-complete-state" style={{ marginTop: "16px" }}>
             Comparison complete: {comparisonComplete ? "true" : "false"}
           </p>

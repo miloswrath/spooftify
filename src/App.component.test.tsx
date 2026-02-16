@@ -6,6 +6,7 @@ import { App } from "./App";
 
 const LEFT_TRACK_ID = "spotify:track:4uLU6hMCjMI75M1A2tKUQC";
 const RIGHT_TRACK_ID = "spotify:track:1301WleyT98MSxVHPZCA6M";
+const RETRY_LEFT_TRACK_ID = "spotify:track:5ChkMS8OtdzJeqyybCc9R5";
 
 describe("App", () => {
   beforeEach(() => {
@@ -193,5 +194,50 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(2);
     expect(storedSession.choices[0]).toMatchObject({ roundIndex: 1 });
     expect(storedSession.choices[1]).toMatchObject({ roundIndex: 2 });
+  });
+
+  it("shows retry state on embed failure and keeps round blocked until replacement pair loads", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Continue to comparison" }));
+
+    fireEvent.error(screen.getByTitle("left-spotify-embed"));
+
+    expect(screen.getByLabelText("embed-retry-state")).toBeTruthy();
+
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    expect(
+      screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)
+    ).toBeTruthy();
+
+    let storedSession = JSON.parse(
+      window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
+    );
+
+    expect(storedSession.choices).toHaveLength(0);
+
+    await user.click(screen.getByRole("button", { name: "retry-comparison-pair" }));
+
+    expect(screen.queryByLabelText("embed-retry-state")).toBeNull();
+    expect(screen.getByText("Option C")).toBeTruthy();
+
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    expect(
+      screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)
+    ).toBeTruthy();
+
+    storedSession = JSON.parse(
+      window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
+    );
+
+    expect(storedSession.choices).toHaveLength(1);
+    expect(storedSession.choices[0]).toMatchObject({
+      roundIndex: 1,
+      chosenTrackId: RETRY_LEFT_TRACK_ID
+    });
   });
 });
