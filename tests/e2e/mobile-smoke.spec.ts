@@ -4,9 +4,12 @@ test("mobile smoke flow reaches comparison stub", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByText("Spooftify")).toBeVisible();
-  await expect(page.getByText("Chat input stub")).toBeVisible();
+  await expect(page.getByLabel("chat-interface")).toBeVisible();
 
-  await page.getByRole("button", { name: "Continue to comparison" }).click();
+  await page.getByLabel("message-input").fill("dreamy synth with upbeat drums");
+  await page.getByRole("button", { name: "send-message" }).click();
+
+  await page.getByRole("button", { name: "continue-to-comparison" }).click();
 
   await expect(page.getByText("Comparison screen stub")).toBeVisible();
 });
