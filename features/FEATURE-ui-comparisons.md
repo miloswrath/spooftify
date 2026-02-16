@@ -158,9 +158,9 @@ tests, and clear implementation constraints.
   retry action runs, and round remains blocked until two valid options exist.
 
 ***Checkpoint 6: Mobile-First Regression + E2E Smoke Update***
-- [ ] Ensure primary comparison flow has no horizontal scroll on mobile viewport
-  and preserves desktop side-by-side layout as secondary behavior.
-- [ ] Update `tests/e2e/mobile-smoke.spec.ts` to cover chat -> comparison -> at
+- [x] Ensure primary comparison flow has no horizontal scroll on mobile viewport
+  and keeps desktop layout vertically stacked per current MVP direction.
+- [x] Update `tests/e2e/mobile-smoke.spec.ts` to cover chat -> comparison -> at
   least one successful selection step in the real comparison UI.
 - [ ] Run and pass `pnpm test:unit`, `pnpm test:api`, and `pnpm test:e2e` before
   PR to satisfy constitution quality gates.

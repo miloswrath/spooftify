@@ -219,10 +219,13 @@ export function App() {
   return (
     <main
       style={{
+        boxSizing: "border-box",
+        overflowX: "hidden",
         minHeight: "100vh",
         margin: "0 auto",
         maxWidth: "560px",
         padding: "16px",
+        width: "100%",
         fontFamily: "system-ui, sans-serif"
       }}
     >
