@@ -4,14 +4,14 @@ import { describe, expect, it } from "vitest";
 import { App } from "./App";
 
 describe("App", () => {
-  it("moves from chat stub to comparison stub", async () => {
+  it("renders chat interface and moves to comparison stub", async () => {
     const user = userEvent.setup();
 
     render(<App />);
 
-    expect(screen.getByText("Chat input stub")).toBeTruthy();
+    expect(screen.getByLabelText("chat-interface")).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "Continue to comparison" }));
+    await user.click(screen.getByRole("button", { name: "continue-to-comparison" }));
 
     expect(screen.getByText("Comparison screen stub")).toBeTruthy();
   });
