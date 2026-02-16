@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-.direnv/
-spoof-spec/.codex/
-.envrc.local
-node_modules/
-dist/
-coverage/
-playwright-report/
-=======
->>>>>>> 20e3cb62fc2d0791b38dde13657395b5873b9d8b
 .direnv/
 spoof-spec/
 
@@ -18,8 +6,5 @@ node_modules/
 dist/
 coverage/
 playwright-report/
-<<<<<<< HEAD
-=======
->>>>>>> 956bf5cee38784c789f5b6f1c67b92280ac2ca8b
->>>>>>> 20e3cb62fc2d0791b38dde13657395b5873b9d8b
+
 test-results/
