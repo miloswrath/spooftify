@@ -1,3 +1,8 @@
 .direnv/
 spoof-spec/.codex/
 .envrc.local
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
