@@ -1,0 +1,100 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  COMPARISON_SESSION_STORAGE_KEY,
+  COMPARISON_TOTAL_ROUNDS
+} from "./constants";
+import {
+  loadComparisonSession,
+  resetComparisonSession,
+  saveComparisonSession,
+  saveRoundChoice,
+  startNewComparisonSession
+} from "./storage";
+import type { ComparisonSessionState } from "./types";
+
+describe("comparison session storage", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("starts a fresh session with fixed 5 rounds", () => {
+    const session = startNewComparisonSession();
+
+    expect(session).toEqual({
+      totalRounds: COMPARISON_TOTAL_ROUNDS,
+      choices: []
+    });
+    expect(loadComparisonSession()).toEqual(session);
+  });
+
+  it("overwrites previous session data on new session start", () => {
+    const existing: ComparisonSessionState = {
+      totalRounds: COMPARISON_TOTAL_ROUNDS,
+      choices: [
+        {
+          roundIndex: 1,
+          leftTrackId: "left-track",
+          rightTrackId: "right-track",
+          chosenTrackId: "left-track",
+          selectedAt: "2026-02-16T00:00:00.000Z"
+        }
+      ]
+    };
+
+    saveComparisonSession(existing);
+
+    const session = startNewComparisonSession();
+
+    expect(session.choices).toEqual([]);
+    expect(loadComparisonSession()).toEqual(session);
+  });
+
+  it("persists and replaces a round choice by round index", () => {
+    saveRoundChoice({
+      roundIndex: 1,
+      leftTrackId: "track-a",
+      rightTrackId: "track-b",
+      chosenTrackId: "track-a",
+      selectedAt: "2026-02-16T00:00:00.000Z"
+    });
+
+    saveRoundChoice({
+      roundIndex: 1,
+      leftTrackId: "track-a",
+      rightTrackId: "track-b",
+      chosenTrackId: "track-b",
+      selectedAt: "2026-02-16T00:00:01.000Z"
+    });
+
+    expect(loadComparisonSession()).toEqual({
+      totalRounds: COMPARISON_TOTAL_ROUNDS,
+      choices: [
+        {
+          roundIndex: 1,
+          leftTrackId: "track-a",
+          rightTrackId: "track-b",
+          chosenTrackId: "track-b",
+          selectedAt: "2026-02-16T00:00:01.000Z"
+        }
+      ]
+    });
+  });
+
+  it("resets the current session from localStorage", () => {
+    startNewComparisonSession();
+
+    resetComparisonSession();
+
+    expect(window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY)).toBeNull();
+    expect(loadComparisonSession()).toBeNull();
+  });
+
+  it("returns null for invalid stored session payload", () => {
+    window.localStorage.setItem(
+      COMPARISON_SESSION_STORAGE_KEY,
+      JSON.stringify({ totalRounds: 3, choices: [] })
+    );
+
+    expect(loadComparisonSession()).toBeNull();
+  });
+});

@@ -12,7 +12,7 @@ This project uses a lightweight test stack designed for MVP speed while still co
   - Purpose: verify route behavior, contract shape, and safety checks with mocked integrations.
 - **E2E smoke test (Playwright)**
   - File: `tests/e2e/mobile-smoke.spec.ts`
-  - Purpose: one mobile-first smoke flow to confirm the UI can move from chat stub to comparison stub.
+  - Purpose: one mobile-first smoke flow to confirm chat -> comparison and one successful selection step.
 
 ## Commands
 
