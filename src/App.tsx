@@ -1,4 +1,5 @@
 import { type TouchEvent, useEffect, useState } from "react";
+import { JudgementDisplay } from "./components/JudgementDisplay";
 import {
   COMPARISON_TOTAL_ROUNDS,
   loadComparisonSession,
@@ -95,7 +96,10 @@ const getProgressFromSession = (
 };
 
 export function App() {
-  const [step, setStep] = useState<"chat" | "compare">("chat");
+  const [step, setStep] = useState<"chat" | "compare" | "judgement">("chat");
+  const [judgement, setJudgement] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>("");
   const [comparisonPair, setComparisonPair] = useState<ComparisonPair | null>(null);
   const [currentRound, setCurrentRound] = useState<ComparisonRoundIndex>(1);
   const [comparisonComplete, setComparisonComplete] = useState(false);
@@ -237,7 +241,7 @@ export function App() {
             Continue to comparison
           </button>
         </section>
-      ) : (
+      ) : step === "compare" ? (
         <section
           aria-label="comparison-stage"
           onTouchStart={handleComparisonTouchStart}
@@ -381,11 +385,35 @@ export function App() {
             type="button"
             aria-label="trigger-final-judgement"
             disabled={!comparisonComplete}
+            onClick={() => {
+              setJudgement("You've got eclectic taste with a love for introspection—the kind of person who curates playlists like they're building a personality.");
+              setStep("judgement");
+            }}
           >
             Generate final judgement
           </button>
         </section>
-      )}
+      ) : step === "judgement" ? (
+        <JudgementDisplay
+          judgement={judgement}
+          isLoading={isLoading}
+          error={error}
+          onRetry={() => {
+            setError("");
+            setIsLoading(true);
+            setTimeout(() => {
+              setIsLoading(false);
+              setJudgement("You've got great taste! Your music choices reveal a deep emotional intelligence.");
+            }, 1500);
+          }}
+          onNewSession={() => {
+            setStep("chat");
+            setJudgement("");
+            setError("");
+            setIsLoading(false);
+          }}
+        />
+      ) : null}
     </main>
   );
 }
