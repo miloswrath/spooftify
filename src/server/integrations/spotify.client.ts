@@ -26,16 +26,30 @@ const getAccessToken = async (): Promise<string> => {
     const { clientId, clientSecret } = getSpotifyClientCredentials();
     const encodedCredentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-    const response = await fetch(SPOTIFY_TOKEN_ENDPOINT, {
-        method: "POST",
-        headers: {
-            Authorization: `Basic ${encodedCredentials}`,
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: "grant_type=client_credentials"
-    });
+    let response: Response;
+
+    try {
+        response = await fetch(SPOTIFY_TOKEN_ENDPOINT, {
+            method: "POST",
+            headers: {
+                Authorization: `Basic ${encodedCredentials}`,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: "grant_type=client_credentials"
+        });
+    } catch {
+        throw new Error("spotify_network_error");
+    }
 
     if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error("spotify_auth_failed");
+        }
+
+        if (response.status === 429) {
+            throw new Error("spotify_rate_limited");
+        }
+
         throw new Error("spotify_token_request_failed");
     }
 
@@ -94,13 +108,27 @@ export function createSpotifyClient(): SpotifyClient {
                 limit: String(params.limit)
             });
 
-            const response = await fetch(`${SPOTIFY_SEARCH_ENDPOINT}?${searchParams.toString()}`, {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            });
+            let response: Response;
+
+            try {
+                response = await fetch(`${SPOTIFY_SEARCH_ENDPOINT}?${searchParams.toString()}`, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                });
+            } catch {
+                throw new Error("spotify_network_error");
+            }
 
             if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error("spotify_auth_failed");
+                }
+
+                if (response.status === 429) {
+                    throw new Error("spotify_rate_limited");
+                }
+
                 throw new Error("spotify_search_request_failed");
             }
 

@@ -65,17 +65,17 @@
 - [x] A test: add unit + API tests for mixed payloads (non-preview tracks, sparse results, all valid results) to verify count and warning behavior.
 
 ***Checkpoint 4: Comparison Wiring + Storage Continuity***
-- [ ] Connect comparison data-fetch path to the new backend endpoint (no direct client-to-Spotify calls).
-- [ ] Preserve existing localStorage schema and keys in `src/features/comparison/storage.ts` with no breaking changes.
-- [ ] Ensure retry path re-fetches candidates while keeping previously saved user choices intact.
-- [ ] A test: add regression tests in `src/features/comparison/storage.test.ts` and component tests to prove storage schema continuity and retry behavior.
+- [x] Connect comparison data-fetch path to the new backend endpoint (no direct client-to-Spotify calls).
+- [x] Preserve existing localStorage schema and keys in `src/features/comparison/storage.ts` with no breaking changes.
+- [x] Ensure retry path re-fetches candidates while keeping previously saved user choices intact.
+- [x] A test: add regression tests in `src/features/comparison/storage.test.ts` and component tests to prove storage schema continuity and retry behavior.
 
 ***Checkpoint 5: Error States + Constitution Test Gate***
-- [ ] Implement user-safe error states for auth/rate-limit/network/provider failures and expose retry actions.
-- [ ] Ensure logs redact secrets and avoid unnecessary full-query logging in server paths.
-- [ ] Verify primary flow coverage aligns with constitution (query -> candidate response -> comparison selection persistence).
-- [ ] A test: run and pass targeted suites (`comparison` unit tests, API tests for endpoint behavior) plus full required project test command set before PR.
-- [ ] Also run e2e test
+- [x] Implement user-safe error states for auth/rate-limit/network/provider failures and expose retry actions.
+- [x] Ensure logs redact secrets and avoid unnecessary full-query logging in server paths.
+- [x] Verify primary flow coverage aligns with constitution (query -> candidate response -> comparison selection persistence).
+- [x] A test: run and pass targeted suites (`comparison` unit tests, API tests for endpoint behavior) plus full required project test command set before PR.
+- [x] Also run e2e test
 
 ### Notes
 

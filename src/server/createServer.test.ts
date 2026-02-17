@@ -15,6 +15,9 @@ describe("createServer", () => {
     }
   ]);
   const summarizeVibe = vi.fn(async () => ({ vibe: "chill" }));
+  const stderrWriteSpy = vi
+    .spyOn(process.stderr, "write")
+    .mockImplementation(() => true);
 
   const server = createServer({
     api1Client: {
@@ -36,6 +39,7 @@ describe("createServer", () => {
     fetchPair.mockClear();
     searchTracks.mockClear();
     summarizeVibe.mockClear();
+    stderrWriteSpy.mockClear();
   });
 
   it("returns health status", async () => {
@@ -174,6 +178,38 @@ describe("createServer", () => {
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({ error: "provider_unavailable" });
+    expect(stderrWriteSpy).toHaveBeenCalled();
+    expect(String(stderrWriteSpy.mock.calls[0]?.[0] ?? "")).toContain(
+      "query_length="
+    );
+    expect(String(stderrWriteSpy.mock.calls[0]?.[0] ?? "")).not.toContain("house");
+  });
+
+  it("maps spotify auth failures to a user-safe error code", async () => {
+    searchTracks.mockRejectedValueOnce(new Error("spotify_auth_failed"));
+
+    const response = await request(server).get("/api/comparison/search?q=house");
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ error: "spotify_auth_failed" });
+  });
+
+  it("maps spotify rate limit failures to retryable state", async () => {
+    searchTracks.mockRejectedValueOnce(new Error("spotify_rate_limited"));
+
+    const response = await request(server).get("/api/comparison/search?q=house");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ error: "spotify_rate_limited" });
+  });
+
+  it("maps spotify network failures to retryable state", async () => {
+    searchTracks.mockRejectedValueOnce(new Error("spotify_network_error"));
+
+    const response = await request(server).get("/api/comparison/search?q=house");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ error: "network_error" });
   });
 
   it("blocks abusive llm input", async () => {

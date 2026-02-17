@@ -36,6 +36,59 @@ const isPreviewableComparisonCandidate = (
   );
 };
 
+type ComparisonSearchApiErrorCode =
+  | "spotify_auth_failed"
+  | "spotify_rate_limited"
+  | "network_error"
+  | "provider_unavailable";
+
+const getComparisonSearchApiErrorCode = (
+  error: unknown
+): ComparisonSearchApiErrorCode => {
+  const code = error instanceof Error ? error.message : "";
+
+  if (code === "spotify_auth_failed" || code === "missing_spotify_credentials") {
+    return "spotify_auth_failed";
+  }
+
+  if (code === "spotify_rate_limited") {
+    return "spotify_rate_limited";
+  }
+
+  if (code === "spotify_network_error") {
+    return "network_error";
+  }
+
+  return "provider_unavailable";
+};
+
+const getComparisonSearchStatusCode = (
+  code: ComparisonSearchApiErrorCode
+): number => {
+  if (code === "spotify_auth_failed") {
+    return 502;
+  }
+
+  if (code === "spotify_rate_limited") {
+    return 503;
+  }
+
+  if (code === "network_error") {
+    return 503;
+  }
+
+  return 502;
+};
+
+const logComparisonSearchFailure = (
+  code: ComparisonSearchApiErrorCode,
+  queryText: string
+): void => {
+  process.stderr.write(
+    `[comparison-search] failed code=${code} query_length=${queryText.length}\n`
+  );
+};
+
 export function createServer(deps: ServerDeps) {
   const app = express();
 
@@ -94,8 +147,12 @@ export function createServer(deps: ServerDeps) {
         candidates: limitedCandidates,
         warning
       });
-    } catch {
-      res.status(502).json({ error: "provider_unavailable" });
+    } catch (error) {
+      const code = getComparisonSearchApiErrorCode(error);
+      const statusCode = getComparisonSearchStatusCode(code);
+
+      logComparisonSearchFailure(code, queryText);
+      res.status(statusCode).json({ error: code });
     }
   });
 

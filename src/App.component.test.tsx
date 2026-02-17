@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import {
   COMPARISON_SESSION_STORAGE_KEY,
@@ -8,9 +8,29 @@ import {
 } from "./features/comparison";
 import { getGlobalQueryText, setGlobalQueryText } from "./lib/queryText";
 
-const LEFT_TRACK_ID = "spotify:track:4uLU6hMCjMI75M1A2tKUQC";
-const RIGHT_TRACK_ID = "spotify:track:1301WleyT98MSxVHPZCA6M";
-const RETRY_LEFT_TRACK_ID = "spotify:track:5ChkMS8OtdzJeqyybCc9R5";
+const buildComparisonSearchPayload = (labelPrefix: string) => ({
+  candidates: Array.from({ length: 10 }, (_value, index) => {
+    const trackNumber = index + 1;
+
+    return {
+      id: `${labelPrefix}-track-${trackNumber}`,
+      title: `${labelPrefix} Option ${trackNumber}`,
+      artistNames: ["Test Artist"],
+      previewUrl: `https://audio.example/${labelPrefix}-track-${trackNumber}.mp3`,
+      embedUrl: `https://open.spotify.com/embed/track/${labelPrefix}-track-${trackNumber}`
+    };
+  }),
+  warning: null
+});
+
+const PRIMARY_SEARCH_RESPONSE = buildComparisonSearchPayload("primary");
+const RETRY_SEARCH_RESPONSE = buildComparisonSearchPayload("retry");
+const ROUND_1_LEFT_TRACK_ID = "primary-track-1";
+const ROUND_1_RIGHT_TRACK_ID = "primary-track-2";
+const ROUND_5_LEFT_TRACK_ID = "primary-track-9";
+const RETRY_ROUND_2_LEFT_TRACK_ID = "retry-track-5";
+const mockFetch = vi.fn();
+const originalFetch = globalThis.fetch;
 
 const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>) => {
   expect(screen.getByLabelText("chat-interface")).toBeTruthy();
@@ -24,6 +44,16 @@ describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
     setGlobalQueryText("");
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => PRIMARY_SEARCH_RESPONSE
+    });
+    globalThis.fetch = mockFetch as typeof fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("moves from chat stage to comparison round scaffold", async () => {
@@ -41,6 +71,7 @@ describe("App", () => {
     expect(storedSession).toBeTruthy();
     expect(storedSession).toContain('"choices":[]');
     expect(getGlobalQueryText()).toBe("I want neon synthwave vibes");
+    expect(mockFetch).toHaveBeenCalledWith("/api/comparison/search?q=I+want+neon+synthwave+vibes");
   });
 
   it("saves left selection from card tap and advances exactly one round", async () => {
@@ -61,9 +92,9 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      leftTrackId: LEFT_TRACK_ID,
-      rightTrackId: RIGHT_TRACK_ID,
-      chosenTrackId: LEFT_TRACK_ID
+      leftTrackId: ROUND_1_LEFT_TRACK_ID,
+      rightTrackId: ROUND_1_RIGHT_TRACK_ID,
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
     });
   });
 
@@ -85,9 +116,9 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      leftTrackId: LEFT_TRACK_ID,
-      rightTrackId: RIGHT_TRACK_ID,
-      chosenTrackId: RIGHT_TRACK_ID
+      leftTrackId: ROUND_1_LEFT_TRACK_ID,
+      rightTrackId: ROUND_1_RIGHT_TRACK_ID,
+      chosenTrackId: ROUND_1_RIGHT_TRACK_ID
     });
   });
 
@@ -116,7 +147,7 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      chosenTrackId: LEFT_TRACK_ID
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
     });
   });
 
@@ -160,7 +191,7 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(COMPARISON_TOTAL_ROUNDS);
     expect(storedSession.choices.at(-1)).toMatchObject({
       roundIndex: COMPARISON_TOTAL_ROUNDS,
-      chosenTrackId: LEFT_TRACK_ID
+      chosenTrackId: ROUND_5_LEFT_TRACK_ID
     });
   });
 
@@ -192,35 +223,45 @@ describe("App", () => {
     expect(storedSession.choices[1]).toMatchObject({ roundIndex: 2 });
   });
 
-  it("shows retry state on embed failure and keeps round blocked until replacement pair loads", async () => {
+  it("retries by re-fetching candidates while preserving already saved choices", async () => {
     const user = userEvent.setup();
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => PRIMARY_SEARCH_RESPONSE
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => RETRY_SEARCH_RESPONSE
+      });
 
     render(<App />);
 
     await startComparisonFromChat(user);
 
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    expect(screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+
     await user.click(screen.getByRole("button", { name: "report-left-embed-unavailable" }));
 
     expect(screen.getByLabelText("embed-retry-state")).toBeTruthy();
-
-    await user.click(screen.getByLabelText("left-track-option"));
-
-    expect(screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
 
     let storedSession = JSON.parse(
       window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
     );
 
-    expect(storedSession.choices).toHaveLength(0);
+    expect(storedSession.choices).toHaveLength(1);
+    expect(storedSession.choices[0]).toMatchObject({
+      roundIndex: 1,
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
+    });
 
     await user.click(screen.getByRole("button", { name: "retry-comparison-pair" }));
 
-    expect(screen.queryByLabelText("embed-retry-state")).toBeNull();
-    expect(screen.getByText("Option C")).toBeTruthy();
-
-    await user.click(screen.getByLabelText("left-track-option"));
-
-    expect(screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+    expect(await screen.findByText("retry Option 5")).toBeTruthy();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
 
     storedSession = JSON.parse(
       window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
@@ -229,7 +270,53 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      chosenTrackId: RETRY_LEFT_TRACK_ID
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
     });
+
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+
+    storedSession = JSON.parse(
+      window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
+    );
+
+    expect(storedSession.choices).toHaveLength(2);
+    expect(storedSession.choices[0]).toMatchObject({
+      roundIndex: 1,
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
+    });
+    expect(storedSession.choices[1]).toMatchObject({
+      roundIndex: 2,
+      chosenTrackId: RETRY_ROUND_2_LEFT_TRACK_ID
+    });
+  });
+
+  it("shows a user-safe provider error state and recovers on retry", async () => {
+    const user = userEvent.setup();
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: "spotify_rate_limited" })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => PRIMARY_SEARCH_RESPONSE
+      });
+
+    render(<App />);
+
+    await startComparisonFromChat(user);
+
+    expect(await screen.findByLabelText("comparison-error-state")).toBeTruthy();
+    expect(screen.getByText("Too many requests hit the music provider. Please wait a moment and retry.")).toBeTruthy();
+    expect(screen.queryByLabelText("embed-retry-state")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "retry-comparison-search" }));
+
+    expect(await screen.findByText("primary Option 3")).toBeTruthy();
+    expect(screen.queryByLabelText("comparison-error-state")).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 });
