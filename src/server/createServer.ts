@@ -2,16 +2,38 @@ import cors from "cors";
 import express from "express";
 import { sanitizeQueryText } from "../lib/queryText";
 import { isBlockedInput } from "./llm/abuseGuard";
-import type { Api1Client, Api2Client, LlmClient, SpotifyClient } from "./types";
+import type {
+  Api1Client,
+  Api2Client,
+  ComparisonTrackCandidate,
+  LlmClient,
+  SpotifyClient
+} from "./types";
 
 const SPOTIFY_SEARCH_TYPE = "track" as const;
 const SPOTIFY_SEARCH_LIMIT = 25;
+const MAX_COMPARISON_CANDIDATES = 10;
 
 type ServerDeps = {
   api1Client: Api1Client;
   api2Client: Api2Client;
   spotifyClient: SpotifyClient;
   llmClient: LlmClient;
+};
+
+const isNonEmptyString = (value: unknown): value is string => {
+  return typeof value === "string" && value.trim().length > 0;
+};
+
+const isPreviewableComparisonCandidate = (
+  candidate: ComparisonTrackCandidate
+): boolean => {
+  return (
+    isNonEmptyString(candidate.id) &&
+    isNonEmptyString(candidate.title) &&
+    isNonEmptyString(candidate.embedUrl) &&
+    isNonEmptyString(candidate.previewUrl)
+  );
 };
 
 export function createServer(deps: ServerDeps) {
@@ -53,8 +75,24 @@ export function createServer(deps: ServerDeps) {
         limit: SPOTIFY_SEARCH_LIMIT
       });
 
+      const previewableCandidates = candidates.filter((candidate) =>
+        isPreviewableComparisonCandidate(candidate)
+      );
+      const limitedCandidates = previewableCandidates.slice(
+        0,
+        MAX_COMPARISON_CANDIDATES
+      );
+      const warning =
+        limitedCandidates.length < MAX_COMPARISON_CANDIDATES
+          ? {
+            code: "insufficient_previewable_tracks",
+            message: "Fewer than 10 previewable tracks were returned. Retry to fetch another set."
+          }
+          : null;
+
       res.status(200).json({
-        candidates
+        candidates: limitedCandidates,
+        warning
       });
     } catch {
       res.status(502).json({ error: "provider_unavailable" });

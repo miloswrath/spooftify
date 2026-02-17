@@ -79,13 +79,84 @@ describe("createServer", () => {
           previewUrl: "https://audio.example/track-1.mp3",
           embedUrl: "https://open.spotify.com/embed/track/track-1"
         }
-      ]
+      ],
+      warning: {
+        code: "insufficient_previewable_tracks",
+        message: "Fewer than 10 previewable tracks were returned. Retry to fetch another set."
+      }
     });
     expect(searchTracks).toHaveBeenCalledWith({
       q: "dark synth",
       type: "track",
       limit: 25
     });
+  });
+
+  it("filters out non-previewable or invalid candidates", async () => {
+    searchTracks.mockResolvedValueOnce([
+      {
+        id: "valid-1",
+        title: "Valid",
+        artistNames: ["A"],
+        previewUrl: "https://audio.example/valid-1.mp3",
+        embedUrl: "https://open.spotify.com/embed/track/valid-1"
+      },
+      {
+        id: "no-preview",
+        title: "No Preview",
+        artistNames: ["B"],
+        previewUrl: null,
+        embedUrl: "https://open.spotify.com/embed/track/no-preview"
+      },
+      {
+        id: "",
+        title: "Bad Id",
+        artistNames: ["C"],
+        previewUrl: "https://audio.example/bad.mp3",
+        embedUrl: "https://open.spotify.com/embed/track/bad"
+      }
+    ]);
+
+    const response = await request(server).get("/api/comparison/search?q=electro");
+
+    expect(response.status).toBe(200);
+    expect(response.body.candidates).toEqual([
+      {
+        id: "valid-1",
+        title: "Valid",
+        artistNames: ["A"],
+        previewUrl: "https://audio.example/valid-1.mp3",
+        embedUrl: "https://open.spotify.com/embed/track/valid-1"
+      }
+    ]);
+    expect(response.body.warning).toEqual({
+      code: "insufficient_previewable_tracks",
+      message: "Fewer than 10 previewable tracks were returned. Retry to fetch another set."
+    });
+  });
+
+  it("returns exactly 10 candidates when more than 10 previewable tracks are available", async () => {
+    const manyCandidates = Array.from({ length: 12 }, (_value, index) => {
+      const trackNumber = index + 1;
+
+      return {
+        id: `track-${trackNumber}`,
+        title: `Track ${trackNumber}`,
+        artistNames: ["DJ Test"],
+        previewUrl: `https://audio.example/track-${trackNumber}.mp3`,
+        embedUrl: `https://open.spotify.com/embed/track/track-${trackNumber}`
+      };
+    });
+
+    searchTracks.mockResolvedValueOnce(manyCandidates);
+
+    const response = await request(server).get("/api/comparison/search?q=house");
+
+    expect(response.status).toBe(200);
+    expect(response.body.candidates).toHaveLength(10);
+    expect(response.body.candidates[0]?.id).toBe("track-1");
+    expect(response.body.candidates[9]?.id).toBe("track-10");
+    expect(response.body.warning).toBeNull();
   });
 
   it("rejects comparison search when query text is empty after sanitization", async () => {

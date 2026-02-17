@@ -59,10 +59,10 @@
 - [x] A test: add API/contract tests validating request shape, successful 200 response mapping, and server-only auth handling in `src/server/` test files.
 
 ***Checkpoint 3: Track Filtering + 10-Result Rule***
-- [ ] Add filtering logic to include only tracks with valid preview URLs and required IDs/metadata.
-- [ ] Enforce "exactly 10 when available" behavior; return fewer only when Spotify cannot provide enough previewable tracks.
-- [ ] Return a recoverable warning state for insufficient previewable results without hard-failing the flow.
-- [ ] A test: add unit + API tests for mixed payloads (non-preview tracks, sparse results, all valid results) to verify count and warning behavior.
+- [x] Add filtering logic to include only tracks with valid preview URLs and required IDs/metadata.
+- [x] Enforce "exactly 10 when available" behavior; return fewer only when Spotify cannot provide enough previewable tracks.
+- [x] Return a recoverable warning state for insufficient previewable results without hard-failing the flow.
+- [x] A test: add unit + API tests for mixed payloads (non-preview tracks, sparse results, all valid results) to verify count and warning behavior.
 
 ***Checkpoint 4: Comparison Wiring + Storage Continuity***
 - [ ] Connect comparison data-fetch path to the new backend endpoint (no direct client-to-Spotify calls).
