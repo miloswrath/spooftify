@@ -11,7 +11,8 @@ describe("createServer", () => {
       fetchPair: vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }))
     },
     llmClient: {
-      summarizeVibe: vi.fn(async () => ({ vibe: "chill" }))
+      summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
+      generateQueryText: vi.fn(async () => ({ queryText: "dreamy indie pop female vocals" }))
     }
   });
 
