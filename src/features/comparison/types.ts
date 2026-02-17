@@ -8,6 +8,7 @@ export type ComparisonRoundIndex =
   | typeof COMPARISON_TOTAL_ROUNDS;
 
 export type TrackId = string;
+export type QUERY_TEXT = string;
 
 export interface ComparisonRoundChoice {
   roundIndex: ComparisonRoundIndex;
@@ -20,4 +21,5 @@ export interface ComparisonRoundChoice {
 export interface ComparisonSessionState {
   totalRounds: typeof COMPARISON_TOTAL_ROUNDS;
   choices: ComparisonRoundChoice[];
+  queryText: QUERY_TEXT | null;
 }

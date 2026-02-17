@@ -7,6 +7,7 @@ import {
   loadComparisonSession,
   resetComparisonSession,
   saveComparisonSession,
+  saveQueryText,
   saveRoundChoice,
   startNewComparisonSession
 } from "./storage";
@@ -22,7 +23,8 @@ describe("comparison session storage", () => {
 
     expect(session).toEqual({
       totalRounds: COMPARISON_TOTAL_ROUNDS,
-      choices: []
+      choices: [],
+      queryText: null
     });
     expect(loadComparisonSession()).toEqual(session);
   });
@@ -30,6 +32,7 @@ describe("comparison session storage", () => {
   it("overwrites previous session data on new session start", () => {
     const existing: ComparisonSessionState = {
       totalRounds: COMPARISON_TOTAL_ROUNDS,
+      queryText: "old seed",
       choices: [
         {
           roundIndex: 1,
@@ -68,6 +71,7 @@ describe("comparison session storage", () => {
 
     expect(loadComparisonSession()).toEqual({
       totalRounds: COMPARISON_TOTAL_ROUNDS,
+      queryText: null,
       choices: [
         {
           roundIndex: 1,
@@ -96,5 +100,14 @@ describe("comparison session storage", () => {
     );
 
     expect(loadComparisonSession()).toBeNull();
+  });
+
+  it("persists query text in the existing session flow", () => {
+    startNewComparisonSession();
+
+    const session = saveQueryText("dreamy indie pop female vocals night drive");
+
+    expect(session.queryText).toBe("dreamy indie pop female vocals night drive");
+    expect(loadComparisonSession()?.queryText).toBe("dreamy indie pop female vocals night drive");
   });
 });

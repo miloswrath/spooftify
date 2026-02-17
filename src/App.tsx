@@ -52,6 +52,18 @@ const EXAMPLE_COMPARISON_PAIRS: ComparisonPair[] = [
 
 const SWIPE_THRESHOLD_PX = 40;
 
+const deriveQueryTextFromChat = (messages: ChatMessage[]): string | null => {
+  const latestUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "user" && message.content.trim().length > 0);
+
+  if (!latestUserMessage) {
+    return null;
+  }
+
+  return latestUserMessage.content.trim().replace(/\s+/g, " ");
+};
+
 const getComparisonPairForRound = (
   roundIndex: ComparisonRoundIndex,
   retryAttempt: number
@@ -142,7 +154,9 @@ export function App() {
   }, [step, currentRound, pairRetryAttempt]);
 
   const handleContinueToComparison = () => {
-    startNewComparisonSession();
+    const queryText = deriveQueryTextFromChat(chatMessages);
+
+    startNewComparisonSession(queryText);
     setComparisonPair(null);
     setCurrentRound(1);
     setComparisonComplete(false);

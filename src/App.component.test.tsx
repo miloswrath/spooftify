@@ -35,6 +35,7 @@ describe("App", () => {
     const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
     expect(storedSession).toBeTruthy();
     expect(storedSession).toContain('"choices":[]');
+    expect(storedSession).toContain('"queryText":"I want neon synthwave vibes"');
   });
 
   it("saves left selection from card tap and advances exactly one round", async () => {
