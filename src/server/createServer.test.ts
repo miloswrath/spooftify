@@ -29,6 +29,13 @@ describe("createServer", () => {
     expect(response.body).toEqual({ id: "t1", title: "focus" });
   });
 
+  it("sanitizes api1 seed before calling the client", async () => {
+    const response = await request(server).get("/api/api1/route?seed=%20%20focus%09%20beats%20%20");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: "t1", title: "focus beats" });
+  });
+
   it("returns api2 stubbed response", async () => {
     const response = await request(server).get("/api/api2/route?vibe=lofi");
 

@@ -47,10 +47,10 @@
 ---
 
 ***Checkpoint 1: Query Input Contract + Sanitization***
-- [ ] Add/confirm `QUERY_TEXT` type and global usage contract where comparison search is triggered.
-- [ ] Implement a pure sanitizer utility (trim, whitespace normalization, control-char stripping) in the comparison feature path.
-- [ ] Wire sanitizer before API invocation so raw query text never reaches the Spotify client call path.
-- [ ] A test: add unit tests for sanitizer edge cases under `src/features/comparison/` (empty, whitespace-heavy, control chars, normal input).
+- [x] Add/confirm `QUERY_TEXT` type and global usage contract where comparison search is triggered.
+- [x] Implement a pure sanitizer utility (trim, whitespace normalization, control-char stripping) in the comparison feature path.
+- [x] Wire sanitizer before API invocation so raw query text never reaches the Spotify client call path.
+- [x] A test: add unit tests for sanitizer edge cases under `src/features/comparison/` (empty, whitespace-heavy, control chars, normal input).
 
 ***Checkpoint 2: Server Spotify Search Endpoint***
 - [ ] Implement/extend a server endpoint under `src/app/api/` to perform Spotify `/v1/search` calls (`type=track`) using sanitized query input.

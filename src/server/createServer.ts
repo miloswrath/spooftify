@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { sanitizeQueryText } from "../lib/queryText";
 import { isBlockedInput } from "./llm/abuseGuard";
 import type { Api1Client, Api2Client, LlmClient } from "./types";
 
@@ -20,7 +21,8 @@ export function createServer(deps: ServerDeps) {
   });
 
   app.get("/api/api1/route", async (req, res) => {
-    const seed = typeof req.query.seed === "string" ? req.query.seed : "default";
+    const rawSeed = typeof req.query.seed === "string" ? req.query.seed : "default";
+    const seed = sanitizeQueryText(rawSeed) || "default";
     const track = await deps.api1Client.fetchPreviewTrack(seed);
     res.status(200).json(track);
   });

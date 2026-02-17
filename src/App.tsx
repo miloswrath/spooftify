@@ -1,4 +1,4 @@
-import { type TouchEvent, useEffect, useState } from "react";
+import { useEffect, useState, type TouchEvent } from "react";
 import { ChatInterface, type ChatMessage } from "./components/ChatInterface";
 import { JudgementDisplay } from "./components/JudgementDisplay";
 import {
@@ -9,6 +9,7 @@ import {
   type ComparisonRoundIndex,
   type ComparisonSessionState
 } from "./features/comparison";
+import { setGlobalQueryText } from "./lib/queryText";
 
 interface TrackOption {
   id: string;
@@ -96,6 +97,13 @@ const getProgressFromSession = (
   };
 };
 
+const buildComparisonQueryText = (messages: ChatMessage[]): string => {
+  return messages
+    .filter((message) => message.role === "user")
+    .map((message) => message.content)
+    .join(" ");
+};
+
 export function App() {
   const [step, setStep] = useState<"chat" | "compare" | "judgement">("chat");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -142,6 +150,7 @@ export function App() {
   }, [step, currentRound, pairRetryAttempt]);
 
   const handleContinueToComparison = () => {
+    setGlobalQueryText(buildComparisonQueryText(chatMessages));
     startNewComparisonSession();
     setComparisonPair(null);
     setCurrentRound(1);
@@ -245,9 +254,9 @@ export function App() {
 
   const hasValidPairData = Boolean(
     comparisonPair?.left.id &&
-      comparisonPair.left.embedUrl &&
-      comparisonPair?.right.id &&
-      comparisonPair.right.embedUrl
+    comparisonPair.left.embedUrl &&
+    comparisonPair?.right.id &&
+    comparisonPair.right.embedUrl
   );
   const hasEmbedFailure = embedFailures.left || embedFailures.right;
   const showRetryState = step === "compare" && (!hasValidPairData || hasEmbedFailure);
@@ -336,7 +345,7 @@ export function App() {
                     <>
                       <iframe
                         title={`${side}-spotify-embed`}
-                        src={option.embedUrl}
+                        src={option?.embedUrl ?? ""}
                         width="100%"
                         height="232"
                         style={{ border: "none", borderRadius: "12px" }}

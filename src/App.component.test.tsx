@@ -1,8 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
 import { App } from "./App";
+import {
+  COMPARISON_SESSION_STORAGE_KEY,
+  COMPARISON_TOTAL_ROUNDS
+} from "./features/comparison";
+import { getGlobalQueryText, setGlobalQueryText } from "./lib/queryText";
 
 const LEFT_TRACK_ID = "spotify:track:4uLU6hMCjMI75M1A2tKUQC";
 const RIGHT_TRACK_ID = "spotify:track:1301WleyT98MSxVHPZCA6M";
@@ -19,6 +23,7 @@ const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>)
 describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    setGlobalQueryText("");
   });
 
   it("moves from chat stage to comparison round scaffold", async () => {
@@ -35,6 +40,7 @@ describe("App", () => {
     const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
     expect(storedSession).toBeTruthy();
     expect(storedSession).toContain('"choices":[]');
+    expect(getGlobalQueryText()).toBe("I want neon synthwave vibes");
   });
 
   it("saves left selection from card tap and advances exactly one round", async () => {
