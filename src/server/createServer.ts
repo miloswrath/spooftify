@@ -2,11 +2,15 @@ import cors from "cors";
 import express from "express";
 import { sanitizeQueryText } from "../lib/queryText";
 import { isBlockedInput } from "./llm/abuseGuard";
-import type { Api1Client, Api2Client, LlmClient } from "./types";
+import type { Api1Client, Api2Client, LlmClient, SpotifyClient } from "./types";
+
+const SPOTIFY_SEARCH_TYPE = "track" as const;
+const SPOTIFY_SEARCH_LIMIT = 25;
 
 type ServerDeps = {
   api1Client: Api1Client;
   api2Client: Api2Client;
+  spotifyClient: SpotifyClient;
   llmClient: LlmClient;
 };
 
@@ -31,6 +35,30 @@ export function createServer(deps: ServerDeps) {
     const vibe = typeof req.query.vibe === "string" ? req.query.vibe : "neutral";
     const pair = await deps.api2Client.fetchPair(vibe);
     res.status(200).json(pair);
+  });
+
+  app.get("/api/comparison/search", async (req, res) => {
+    const rawQueryText = typeof req.query.q === "string" ? req.query.q : "";
+    const queryText = sanitizeQueryText(rawQueryText);
+
+    if (!queryText) {
+      res.status(400).json({ error: "invalid_query_text" });
+      return;
+    }
+
+    try {
+      const candidates = await deps.spotifyClient.searchTracks({
+        q: queryText,
+        type: SPOTIFY_SEARCH_TYPE,
+        limit: SPOTIFY_SEARCH_LIMIT
+      });
+
+      res.status(200).json({
+        candidates
+      });
+    } catch {
+      res.status(502).json({ error: "provider_unavailable" });
+    }
   });
 
   app.post("/api/llm/route", async (req, res) => {

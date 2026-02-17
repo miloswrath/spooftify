@@ -1,18 +1,41 @@
 import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createServer } from "./createServer";
 
 describe("createServer", () => {
+  const fetchPreviewTrack = vi.fn(async (seed: string) => ({ id: "t1", title: seed }));
+  const fetchPair = vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }));
+  const searchTracks = vi.fn(async () => [
+    {
+      id: "track-1",
+      title: "Strobe Lights",
+      artistNames: ["DJ Test"],
+      previewUrl: "https://audio.example/track-1.mp3",
+      embedUrl: "https://open.spotify.com/embed/track/track-1"
+    }
+  ]);
+  const summarizeVibe = vi.fn(async () => ({ vibe: "chill" }));
+
   const server = createServer({
     api1Client: {
-      fetchPreviewTrack: vi.fn(async (seed: string) => ({ id: "t1", title: seed }))
+      fetchPreviewTrack
     },
     api2Client: {
-      fetchPair: vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }))
+      fetchPair
+    },
+    spotifyClient: {
+      searchTracks
     },
     llmClient: {
-      summarizeVibe: vi.fn(async () => ({ vibe: "chill" }))
+      summarizeVibe
     }
+  });
+
+  beforeEach(() => {
+    fetchPreviewTrack.mockClear();
+    fetchPair.mockClear();
+    searchTracks.mockClear();
+    summarizeVibe.mockClear();
   });
 
   it("returns health status", async () => {
@@ -41,6 +64,45 @@ describe("createServer", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ left: "lofi-L", right: "lofi-R" });
+  });
+
+  it("returns mapped comparison search candidates", async () => {
+    const response = await request(server).get("/api/comparison/search?q=dark%20synth");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      candidates: [
+        {
+          id: "track-1",
+          title: "Strobe Lights",
+          artistNames: ["DJ Test"],
+          previewUrl: "https://audio.example/track-1.mp3",
+          embedUrl: "https://open.spotify.com/embed/track/track-1"
+        }
+      ]
+    });
+    expect(searchTracks).toHaveBeenCalledWith({
+      q: "dark synth",
+      type: "track",
+      limit: 25
+    });
+  });
+
+  it("rejects comparison search when query text is empty after sanitization", async () => {
+    const response = await request(server).get("/api/comparison/search?q=%20%09%20");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "invalid_query_text" });
+    expect(searchTracks).not.toHaveBeenCalled();
+  });
+
+  it("returns provider error state for spotify search failures", async () => {
+    searchTracks.mockRejectedValueOnce(new Error("search failed"));
+
+    const response = await request(server).get("/api/comparison/search?q=house");
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ error: "provider_unavailable" });
   });
 
   it("blocks abusive llm input", async () => {

@@ -53,10 +53,10 @@
 - [x] A test: add unit tests for sanitizer edge cases under `src/features/comparison/` (empty, whitespace-heavy, control chars, normal input).
 
 ***Checkpoint 2: Server Spotify Search Endpoint***
-- [ ] Implement/extend a server endpoint under `src/app/api/` to perform Spotify `/v1/search` calls (`type=track`) using sanitized query input.
-- [ ] Keep Spotify auth and token handling fully server-side using existing server integration patterns under `src/server/integrations/`.
-- [ ] Map Spotify response to internal comparison track shape expected by existing comparison modules.
-- [ ] A test: add API/contract tests validating request shape, successful 200 response mapping, and server-only auth handling in `src/server/` test files.
+- [x] Implement/extend a server endpoint under `src/app/api/` to perform Spotify `/v1/search` calls (`type=track`) using sanitized query input.
+- [x] Keep Spotify auth and token handling fully server-side using existing server integration patterns under `src/server/integrations/`.
+- [x] Map Spotify response to internal comparison track shape expected by existing comparison modules.
+- [x] A test: add API/contract tests validating request shape, successful 200 response mapping, and server-only auth handling in `src/server/` test files.
 
 ***Checkpoint 3: Track Filtering + 10-Result Rule***
 - [ ] Add filtering logic to include only tracks with valid preview URLs and required IDs/metadata.
@@ -75,6 +75,7 @@
 - [ ] Ensure logs redact secrets and avoid unnecessary full-query logging in server paths.
 - [ ] Verify primary flow coverage aligns with constitution (query -> candidate response -> comparison selection persistence).
 - [ ] A test: run and pass targeted suites (`comparison` unit tests, API tests for endpoint behavior) plus full required project test command set before PR.
+- [ ] Also run e2e test
 
 ### Notes
 
