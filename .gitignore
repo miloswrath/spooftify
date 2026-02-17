@@ -1,8 +1,10 @@
 .direnv/
-spoof-spec/.codex/
+spoof-spec/
+
 .envrc.local
 node_modules/
 dist/
 coverage/
 playwright-report/
+
 test-results/
