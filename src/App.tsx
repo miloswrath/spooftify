@@ -1,4 +1,5 @@
 import { type TouchEvent, useEffect, useState } from "react";
+import { ChatInterface, type ChatMessage } from "./components/ChatInterface";
 import { JudgementDisplay } from "./components/JudgementDisplay";
 import {
   COMPARISON_TOTAL_ROUNDS,
@@ -97,6 +98,14 @@ const getProgressFromSession = (
 
 export function App() {
   const [step, setStep] = useState<"chat" | "compare" | "judgement">("chat");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: "assistant-welcome",
+      role: "assistant",
+      content: "Tell me your vibe and what kind of music you want right now."
+    }
+  ]);
+  const [isThinking, setIsThinking] = useState(false);
   const [judgement, setJudgement] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -109,6 +118,7 @@ export function App() {
     right: false
   });
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const hasUserMessage = chatMessages.some((message) => message.role === "user");
 
   useEffect(() => {
     const session = loadComparisonSession();
@@ -139,6 +149,29 @@ export function App() {
     setPairRetryAttempt(0);
     setEmbedFailures({ left: false, right: false });
     setStep("compare");
+  };
+
+  const handleSendMessage = (content: string) => {
+    const message: ChatMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      role: "user",
+      content
+    };
+
+    setChatMessages((previous) => [...previous, message]);
+    setIsThinking(true);
+
+    setTimeout(() => {
+      setChatMessages((previous) => [
+        ...previous,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          role: "assistant",
+          content: "Nice vibe. I can grab two tracks for your comparison next."
+        }
+      ]);
+      setIsThinking(false);
+    }, 600);
   };
 
   const handleSelectTrack = (side: ComparisonSide) => {
@@ -236,10 +269,13 @@ export function App() {
       <h1>Spooftify</h1>
       {step === "chat" ? (
         <section aria-label="chat-stage">
-          <p>Chat input stub</p>
-          <button type="button" onClick={handleContinueToComparison}>
-            Continue to comparison
-          </button>
+          <ChatInterface
+            messages={chatMessages}
+            onSendMessage={handleSendMessage}
+            isThinking={isThinking}
+            showContinue={hasUserMessage}
+            onContinue={handleContinueToComparison}
+          />
         </section>
       ) : step === "compare" ? (
         <section
