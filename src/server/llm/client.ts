@@ -5,10 +5,12 @@ const LOCAL_QWEN_MODEL_NAME = "qwen5.2";
 const LOCAL_QWEN_TIMEOUT_MS = 4_000;
 
 const QUERY_TEXT_SYSTEM_PROMPT = [
-  "Convert the user vibe context into exactly one Spotify search phrase.",
+  "Convert the conversation vibe context into exactly one Spotify search phrase.",
   "Return plain text only.",
-  "Do not return JSON, markdown, labels, quotes, or explanations.",
-  "Keep it concise and music-focused."
+  "Do not return JSON, markdown, labels, quotes, explanations, or punctuation.",
+  "Use 4 to 10 lower-case music keywords separated by spaces.",
+  "Synthesize the vibe and do not copy any full user sentence verbatim.",
+  "Example output: dreamy indie pop female vocals night drive."
 ].join(" ");
 
 type OpenAiCompatibleResponse = {

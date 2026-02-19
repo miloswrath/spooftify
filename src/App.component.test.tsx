@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
@@ -8,23 +8,38 @@ const LEFT_TRACK_ID = "spotify:track:4uLU6hMCjMI75M1A2tKUQC";
 const RIGHT_TRACK_ID = "spotify:track:1301WleyT98MSxVHPZCA6M";
 const RETRY_LEFT_TRACK_ID = "spotify:track:5ChkMS8OtdzJeqyybCc9R5";
 
+const sendChatMessage = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
+  const input = screen.getByLabelText("message-input") as HTMLInputElement;
+
+  await user.type(input, text);
+
+  const sendButton = screen.getByRole("button", { name: "send-message" }) as HTMLButtonElement;
+
+  await waitFor(() => {
+    expect(sendButton.disabled).toBe(false);
+  });
+
+  await user.click(sendButton);
+
+  await waitFor(() => {
+    expect(input.value).toBe("");
+  });
+};
+
 const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>) => {
   expect(screen.getByLabelText("chat-interface")).toBeTruthy();
 
-  await user.type(screen.getByLabelText("message-input"), "I want neon synthwave vibes");
-  await user.click(screen.getByRole("button", { name: "send-message" }));
+  await sendChatMessage(user, "I want neon synthwave vibes");
   expect(screen.queryByRole("button", { name: "continue-to-comparison" })).toBeNull();
 
-  await screen.findByText("Got it. One more: what energy level do you want right now?");
+  await screen.findByText(/(energy|tempo|chaos|sprint|send)/i);
 
-  await user.type(screen.getByLabelText("message-input"), "high-energy and cinematic");
-  await user.click(screen.getByRole("button", { name: "send-message" }));
-  await screen.findByText("Nice. Last one: where would you listen to this music?");
+  await sendChatMessage(user, "high-energy and cinematic");
+  await screen.findByText(/last one before i summon the algorithm/i);
   expect(screen.queryByRole("button", { name: "continue-to-comparison" })).toBeNull();
 
-  await user.type(screen.getByLabelText("message-input"), "driving through neon rain at night");
-  await user.click(screen.getByRole("button", { name: "send-message" }));
-  await screen.findByText("Perfect. I can generate your Spotify search phrase now.");
+  await sendChatMessage(user, "driving through neon rain at night");
+  await screen.findByText(/spotify search phrase/i);
 
   await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
   await screen.findByRole("button", { name: "choose-right-track" });
@@ -273,17 +288,14 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.type(screen.getByLabelText("message-input"), "I want neon synthwave vibes");
-    await user.click(screen.getByRole("button", { name: "send-message" }));
-    await screen.findByText("Got it. One more: what energy level do you want right now?");
+    await sendChatMessage(user, "I want neon synthwave vibes");
+    await screen.findByText(/(energy|tempo|chaos|sprint|send)/i);
 
-    await user.type(screen.getByLabelText("message-input"), "high-energy and cinematic");
-    await user.click(screen.getByRole("button", { name: "send-message" }));
-    await screen.findByText("Nice. Last one: where would you listen to this music?");
+    await sendChatMessage(user, "high-energy and cinematic");
+    await screen.findByText(/last one before i summon the algorithm/i);
 
-    await user.type(screen.getByLabelText("message-input"), "driving through neon rain at night");
-    await user.click(screen.getByRole("button", { name: "send-message" }));
-    await screen.findByText("Perfect. I can generate your Spotify search phrase now.");
+    await sendChatMessage(user, "driving through neon rain at night");
+    await screen.findByText(/spotify search phrase/i);
 
     await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
 

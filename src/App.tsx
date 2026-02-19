@@ -56,6 +56,94 @@ const MIN_USER_MESSAGES_FOR_QUERY = 3;
 const QUERY_GENERATION_ERROR_MESSAGE =
   "Could not generate your Spotify search text. Check LM Studio and retry.";
 
+const ENERGY_QUESTION_POOL = [
+  "How hard are we sending this right now?",
+  "Do you want low-key chill or full goblin mode energy?",
+  "What’s the energy level—nap mode or main-stage chaos?",
+  "Should this feel smooth and floaty or punch-you-in-the-face loud?",
+  "Are we cooking calm vibes or feral momentum?",
+  "How spicy should this get on the energy scale?",
+  "Do you want this to glide or absolutely sprint?",
+  "What tempo are you chasing: heartbeat or adrenaline?",
+  "Should this stay soft or go absolutely unhinged?",
+  "How much chaos are we allowing here, honestly?",
+  "Do you want subtle bounce or full send no brakes?",
+  "Where should this sit: mellow, mid, or manic?",
+  "How aggressive should the groove be?",
+  "Should this feel cozy warm or loud and reckless?",
+  "Energy check: background vibe or center-of-the-universe blast?"
+] as const;
+
+const CONTEXT_QUESTION_POOL = [
+  "Where are you listening to this—bedroom, gym, car, or villain rooftop?",
+  "What scene is this for: night drive, study cave, or reckless strut?",
+  "Where does this soundtrack hit—headphones alone or speaker takeover?",
+  "Paint me the setting: rain on windows, neon streets, or crowded room?",
+  "Where are you when this starts playing?",
+  "What’s the moment: zoning in, showing off, or spiraling beautifully?",
+  "Who’s around for this vibe—just you, friends, or random NPCs?",
+  "Is this for focus, flexing, healing, or controlled chaos?",
+  "What time-of-day energy is this: sunrise reset or 2 a.m. nonsense?",
+  "Where should this land emotionally—comfort blanket or ego boost?",
+  "Are you using this as background fuel or main-character soundtrack?",
+  "What room or place should this fill first?",
+  "Is this private headphone therapy or public swagger music?",
+  "Where do you want this to hit hardest—mind, body, or both?",
+  "What scenario are we scoring here, exactly?"
+] as const;
+
+const HIGH_ENERGY_ACK_POOL = [
+  "That is aggressively iconic.",
+  "This vibe is loud in all the right ways.",
+  "Unhinged choice. Respect.",
+  "Yeah, this is chaos with taste.",
+  "You’re swinging for the fences and I love it.",
+  "This energy is illegal in at least three countries.",
+  "You picked violence, but make it musical.",
+  "This is giving cinematic destruction.",
+  "You’re not here to whisper and I respect that.",
+  "This slaps already and we’re not even done."
+] as const;
+
+const LOW_ENERGY_ACK_POOL = [
+  "That is cozy as hell.",
+  "Soft but dangerous. I get it.",
+  "This is emotionally expensive and I approve.",
+  "Warm blanket energy with hidden teeth.",
+  "This is calm with suspicious depth.",
+  "Low-key and devastating—solid.",
+  "Quiet flex. Excellent.",
+  "This feels like rain on purpose.",
+  "Gentle vibe, heavy feelings.",
+  "Subtle choice, big impact."
+] as const;
+
+const NEUTRAL_ACK_POOL = [
+  "That’s a clean vibe pick.",
+  "You’re cooking something interesting.",
+  "Nice blend, no notes.",
+  "That’s weird in a good way.",
+  "Okay, this has range.",
+  "I can work with this chaos.",
+  "Solid direction. Let’s sharpen it.",
+  "This might actually be elite.",
+  "You’re onto something spicy.",
+  "Interesting pick. I’m listening."
+] as const;
+
+const FINAL_CONFIRM_POOL = [
+  "Perfect. I’ve got enough to cook your Spotify search phrase. Tap Continue.",
+  "Beautiful chaos. I can now craft your Spotify search phrase—hit Continue.",
+  "Locked in. I’m ready to mint your Spotify search phrase. Tap Continue.",
+  "That’s enough signal. I can generate your Spotify search phrase now.",
+  "Alright, that’s the full recipe. Tap Continue and I’ll serve the Spotify phrase.",
+  "Done. We’ve got the ingredients for a deadly Spotify search phrase. Continue.",
+  "Yep, this is plenty. Tap Continue for your Spotify-ready phrase.",
+  "We’re there. I can craft your Spotify search phrase right now.",
+  "Chef mode activated. Continue and I’ll generate the Spotify phrase.",
+  "Perfect setup. Hit Continue and I’ll spit out the Spotify search phrase."
+] as const;
+
 const buildQueryGenerationInput = (messages: ChatMessage[]): string | null => {
   const transcriptLines = messages
     .map((message) => `${message.role}: ${message.content.trim()}`)
@@ -66,6 +154,65 @@ const buildQueryGenerationInput = (messages: ChatMessage[]): string | null => {
   }
 
   return transcriptLines.join("\n");
+};
+
+const pickFromPool = (seed: string, pool: readonly string[]): string => {
+  const normalizedSeed = seed.trim().toLowerCase();
+  let hash = 0;
+
+  for (let index = 0; index < normalizedSeed.length; index += 1) {
+    hash = (hash * 31 + normalizedSeed.charCodeAt(index)) >>> 0;
+  }
+
+  return pool[hash % pool.length];
+};
+
+const buildConversationalReply = (
+  latestUserInput: string,
+  nextUserMessageCount: number
+): string => {
+  const loweredInput = latestUserInput.toLowerCase();
+  const keyPhrase = latestUserInput
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 2)
+    .slice(0, 3)
+    .join(" ");
+
+  const highEnergy = /(hype|high|energy|party|wild|chaotic|rage|fast|hard|loud)/.test(
+    loweredInput
+  );
+  const lowEnergy = /(chill|calm|soft|lofi|study|sleep|focus|rain|cozy|sad)/.test(
+    loweredInput
+  );
+
+  if (nextUserMessageCount === 1) {
+    const ackPool = highEnergy
+      ? HIGH_ENERGY_ACK_POOL
+      : lowEnergy
+        ? LOW_ENERGY_ACK_POOL
+        : NEUTRAL_ACK_POOL;
+    const ack = pickFromPool(`${latestUserInput}:ack:1`, ackPool);
+    const question = pickFromPool(`${latestUserInput}:energy`, ENERGY_QUESTION_POOL);
+
+    return keyPhrase ? `${ack} ${keyPhrase} is the flavor. ${question}` : `${ack} ${question}`;
+  }
+
+  if (nextUserMessageCount === 2) {
+    const ackPool = highEnergy
+      ? HIGH_ENERGY_ACK_POOL
+      : lowEnergy
+        ? LOW_ENERGY_ACK_POOL
+        : NEUTRAL_ACK_POOL;
+    const ack = pickFromPool(`${latestUserInput}:ack:2`, ackPool);
+    const question = pickFromPool(`${latestUserInput}:context`, CONTEXT_QUESTION_POOL);
+
+    return keyPhrase
+      ? `${ack} Last one before I summon the algorithm: ${question} (${keyPhrase} core).`
+      : `${ack} Last one before I summon the algorithm: ${question}`;
+  }
+
+  return pickFromPool(`${latestUserInput}:final`, FINAL_CONFIRM_POOL);
 };
 
 const getComparisonPairForRound = (
@@ -263,13 +410,7 @@ export function App() {
     setIsThinking(true);
 
     setTimeout(() => {
-      let assistantContent = "Perfect. I can generate your Spotify search phrase now.";
-
-      if (nextUserMessageCount === 1) {
-        assistantContent = "Got it. One more: what energy level do you want right now?";
-      } else if (nextUserMessageCount === 2) {
-        assistantContent = "Nice. Last one: where would you listen to this music?";
-      }
+      const assistantContent = buildConversationalReply(content, nextUserMessageCount);
 
       setChatMessages((previous) => [
         ...previous,
