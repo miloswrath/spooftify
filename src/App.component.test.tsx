@@ -13,6 +13,14 @@ const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>)
 
   await user.type(screen.getByLabelText("message-input"), "I want neon synthwave vibes");
   await user.click(screen.getByRole("button", { name: "send-message" }));
+  expect(screen.queryByRole("button", { name: "continue-to-comparison" })).toBeNull();
+
+  await screen.findByText("Got it. One more: what energy level do you want right now?");
+
+  await user.type(screen.getByLabelText("message-input"), "high-energy and cinematic");
+  await user.click(screen.getByRole("button", { name: "send-message" }));
+  await screen.findByText("Perfect. I can generate your Spotify search phrase now.");
+
   await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
 };
 

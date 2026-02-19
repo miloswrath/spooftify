@@ -51,21 +51,21 @@ const EXAMPLE_COMPARISON_PAIRS: ComparisonPair[] = [
 ];
 
 const SWIPE_THRESHOLD_PX = 40;
+const MIN_USER_MESSAGES_FOR_QUERY = 2;
 
 const QUERY_GENERATION_ERROR_MESSAGE =
   "Could not generate your Spotify search text. Check LM Studio and retry.";
 
 const buildQueryGenerationInput = (messages: ChatMessage[]): string | null => {
-  const userMessages = messages
-    .filter((message) => message.role === "user")
-    .map((message) => message.content.trim())
-    .filter((content) => content.length > 0);
+  const transcriptLines = messages
+    .map((message) => `${message.role}: ${message.content.trim()}`)
+    .filter((line) => !line.endsWith(": "));
 
-  if (userMessages.length === 0) {
+  if (transcriptLines.length === 0) {
     return null;
   }
 
-  return userMessages.join("\n");
+  return transcriptLines.join("\n");
 };
 
 const getComparisonPairForRound = (
@@ -137,7 +137,8 @@ export function App() {
     right: false
   });
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const hasUserMessage = chatMessages.some((message) => message.role === "user");
+  const userMessageCount = chatMessages.filter((message) => message.role === "user").length;
+  const canContinueToComparison = userMessageCount >= MIN_USER_MESSAGES_FOR_QUERY;
 
   useEffect(() => {
     const session = loadComparisonSession();
@@ -239,6 +240,7 @@ export function App() {
   };
 
   const handleSendMessage = (content: string) => {
+    const nextUserMessageCount = userMessageCount + 1;
     const message: ChatMessage = {
       id: `${Date.now()}-${Math.random()}`,
       role: "user",
@@ -250,12 +252,17 @@ export function App() {
     setIsThinking(true);
 
     setTimeout(() => {
+      const assistantContent =
+        nextUserMessageCount < MIN_USER_MESSAGES_FOR_QUERY
+          ? "Got it. One more: what energy level do you want right now?"
+          : "Perfect. I can generate your Spotify search phrase now.";
+
       setChatMessages((previous) => [
         ...previous,
         {
           id: `${Date.now()}-${Math.random()}`,
           role: "assistant",
-          content: "Nice vibe. I can grab two tracks for your comparison next."
+          content: assistantContent
         }
       ]);
       setIsThinking(false);
@@ -361,9 +368,9 @@ export function App() {
             messages={chatMessages}
             onSendMessage={handleSendMessage}
             isThinking={isThinking || isGeneratingQueryText}
-            showContinue={hasUserMessage}
+            showContinue={canContinueToComparison}
             onContinue={handleContinueToComparison}
-            continueDisabled={isGeneratingQueryText}
+            continueDisabled={isGeneratingQueryText || isThinking}
           />
           {queryGenerationError ? (
             <div
