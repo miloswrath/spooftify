@@ -13,6 +13,7 @@ export interface ChatInterfaceProps {
   isThinking: boolean;
   onContinue?: () => void;
   showContinue?: boolean;
+  continueDisabled?: boolean;
 }
 
 export function ChatInterface({
@@ -20,7 +21,8 @@ export function ChatInterface({
   onSendMessage,
   isThinking,
   onContinue,
-  showContinue = false
+  showContinue = false,
+  continueDisabled = false
 }: ChatInterfaceProps) {
   const [draft, setDraft] = useState("");
   const messageContainerRef = useRef<HTMLDivElement>(null);
@@ -155,7 +157,7 @@ export function ChatInterface({
             type="button"
             onClick={handleSend}
             disabled={!canSend}
-            style={{
+            style= {{
               minHeight: "44px",
               minWidth: "44px",
               border: "1px solid #d1d5db",
@@ -174,6 +176,7 @@ export function ChatInterface({
             aria-label="continue-to-comparison"
             type="button"
             onClick={onContinue}
+            disabled={continueDisabled}
             style={{
               marginTop: "10px",
               width: "100%",

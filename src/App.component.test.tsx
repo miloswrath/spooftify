@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
 import { App } from "./App";
 
@@ -19,6 +19,14 @@ const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>)
 describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ queryText: "dreamy indie pop female vocals night drive" })
+      }))
+    );
   });
 
   it("moves from chat stage to comparison round scaffold", async () => {
@@ -35,7 +43,7 @@ describe("App", () => {
     const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
     expect(storedSession).toBeTruthy();
     expect(storedSession).toContain('"choices":[]');
-    expect(storedSession).toContain('"queryText":"I want neon synthwave vibes"');
+    expect(storedSession).toContain('"queryText":"dreamy indie pop female vocals night drive"');
   });
 
   it("saves left selection from card tap and advances exactly one round", async () => {
@@ -226,5 +234,35 @@ describe("App", () => {
       roundIndex: 1,
       chosenTrackId: RETRY_LEFT_TRACK_ID
     });
+  });
+
+  it("shows query generation retry UI on failure and proceeds after retry succeeds", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "query_text_unavailable" })
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ queryText: "night drive synthwave neon city" })
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await startComparisonFromChat(user);
+
+    expect(await screen.findByLabelText("query-generation-error")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "retry-query-generation" }));
+
+    expect(await screen.findByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+
+    const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
+
+    expect(storedSession).toContain('"queryText":"night drive synthwave neon city"');
   });
 });

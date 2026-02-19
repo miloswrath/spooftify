@@ -4,6 +4,7 @@ import { createLlmClient } from "./client";
 describe("createLlmClient.generateQueryText", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("builds an OpenAI-compatible request for local qwen and returns a normalized plain string", async () => {
@@ -85,5 +86,40 @@ describe("createLlmClient.generateQueryText", () => {
     const client = createLlmClient();
 
     await expect(client.generateQueryText("chill indie")).rejects.toThrow("empty_output");
+  });
+
+  it("rejects with timeout when local model does not respond in time", async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn((_url: string, options?: { signal?: AbortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => {
+          reject(new DOMException("The operation was aborted.", "AbortError"));
+        });
+      });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createLlmClient();
+    const pendingResult = client.generateQueryText("slow response");
+    const timeoutExpectation = expect(pendingResult).rejects.toThrow("timeout");
+
+    await vi.advanceTimersByTimeAsync(4_100);
+
+    await timeoutExpectation;
+  });
+
+  it("rejects with network_error when local endpoint is unreachable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      })
+    );
+
+    const client = createLlmClient();
+
+    await expect(client.generateQueryText("chill indie")).rejects.toThrow("network_error");
   });
 });

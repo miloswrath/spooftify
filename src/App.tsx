@@ -52,16 +52,20 @@ const EXAMPLE_COMPARISON_PAIRS: ComparisonPair[] = [
 
 const SWIPE_THRESHOLD_PX = 40;
 
-const deriveQueryTextFromChat = (messages: ChatMessage[]): string | null => {
-  const latestUserMessage = [...messages]
-    .reverse()
-    .find((message) => message.role === "user" && message.content.trim().length > 0);
+const QUERY_GENERATION_ERROR_MESSAGE =
+  "Could not generate your Spotify search text. Check LM Studio and retry.";
 
-  if (!latestUserMessage) {
+const buildQueryGenerationInput = (messages: ChatMessage[]): string | null => {
+  const userMessages = messages
+    .filter((message) => message.role === "user")
+    .map((message) => message.content.trim())
+    .filter((content) => content.length > 0);
+
+  if (userMessages.length === 0) {
     return null;
   }
 
-  return latestUserMessage.content.trim().replace(/\s+/g, " ");
+  return userMessages.join("\n");
 };
 
 const getComparisonPairForRound = (
@@ -118,6 +122,9 @@ export function App() {
     }
   ]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isGeneratingQueryText, setIsGeneratingQueryText] = useState(false);
+  const [queryGenerationError, setQueryGenerationError] = useState<string>("");
+  const [lastQueryInput, setLastQueryInput] = useState<string | null>(null);
   const [judgement, setJudgement] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -153,9 +160,35 @@ export function App() {
     setComparisonPair(getComparisonPairForRound(currentRound, pairRetryAttempt));
   }, [step, currentRound, pairRetryAttempt]);
 
-  const handleContinueToComparison = () => {
-    const queryText = deriveQueryTextFromChat(chatMessages);
+  const generateQueryText = async (queryInput: string): Promise<string> => {
+    const response = await fetch("/api/llm/route", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: queryInput })
+    });
 
+    if (!response.ok) {
+      throw new Error("query_text_unavailable");
+    }
+
+    const payload = (await response.json()) as { queryText?: unknown };
+
+    if (typeof payload.queryText !== "string") {
+      throw new Error("invalid_response_body");
+    }
+
+    const queryText = payload.queryText.trim().replace(/\s+/g, " ");
+
+    if (!queryText) {
+      throw new Error("empty_output");
+    }
+
+    return queryText;
+  };
+
+  const continueToComparisonWithQuery = (queryText: string) => {
     startNewComparisonSession(queryText);
     setComparisonPair(null);
     setCurrentRound(1);
@@ -163,6 +196,46 @@ export function App() {
     setPairRetryAttempt(0);
     setEmbedFailures({ left: false, right: false });
     setStep("compare");
+  };
+
+  const handleContinueToComparison = async () => {
+    const queryInput = buildQueryGenerationInput(chatMessages);
+
+    if (!queryInput) {
+      setQueryGenerationError(QUERY_GENERATION_ERROR_MESSAGE);
+      return;
+    }
+
+    setIsGeneratingQueryText(true);
+    setQueryGenerationError("");
+    setLastQueryInput(queryInput);
+
+    try {
+      const queryText = await generateQueryText(queryInput);
+      continueToComparisonWithQuery(queryText);
+    } catch {
+      setQueryGenerationError(QUERY_GENERATION_ERROR_MESSAGE);
+    } finally {
+      setIsGeneratingQueryText(false);
+    }
+  };
+
+  const handleRetryQueryGeneration = async () => {
+    if (!lastQueryInput) {
+      return;
+    }
+
+    setIsGeneratingQueryText(true);
+    setQueryGenerationError("");
+
+    try {
+      const queryText = await generateQueryText(lastQueryInput);
+      continueToComparisonWithQuery(queryText);
+    } catch {
+      setQueryGenerationError(QUERY_GENERATION_ERROR_MESSAGE);
+    } finally {
+      setIsGeneratingQueryText(false);
+    }
   };
 
   const handleSendMessage = (content: string) => {
@@ -173,6 +246,7 @@ export function App() {
     };
 
     setChatMessages((previous) => [...previous, message]);
+    setQueryGenerationError("");
     setIsThinking(true);
 
     setTimeout(() => {
@@ -286,10 +360,32 @@ export function App() {
           <ChatInterface
             messages={chatMessages}
             onSendMessage={handleSendMessage}
-            isThinking={isThinking}
+            isThinking={isThinking || isGeneratingQueryText}
             showContinue={hasUserMessage}
             onContinue={handleContinueToComparison}
+            continueDisabled={isGeneratingQueryText}
           />
+          {queryGenerationError ? (
+            <div
+              aria-label="query-generation-error"
+              style={{
+                border: "1px solid #f59e0b",
+                borderRadius: "12px",
+                marginTop: "12px",
+                padding: "12px"
+              }}
+            >
+              <p style={{ margin: "0 0 8px" }}>{queryGenerationError}</p>
+              <button
+                type="button"
+                aria-label="retry-query-generation"
+                onClick={handleRetryQueryGeneration}
+                disabled={isGeneratingQueryText || !lastQueryInput}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
         </section>
       ) : step === "compare" ? (
         <section
