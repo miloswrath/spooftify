@@ -19,9 +19,15 @@ const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>)
 
   await user.type(screen.getByLabelText("message-input"), "high-energy and cinematic");
   await user.click(screen.getByRole("button", { name: "send-message" }));
+  await screen.findByText("Nice. Last one: where would you listen to this music?");
+  expect(screen.queryByRole("button", { name: "continue-to-comparison" })).toBeNull();
+
+  await user.type(screen.getByLabelText("message-input"), "driving through neon rain at night");
+  await user.click(screen.getByRole("button", { name: "send-message" }));
   await screen.findByText("Perfect. I can generate your Spotify search phrase now.");
 
   await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
+  await screen.findByRole("button", { name: "choose-right-track" });
 };
 
 describe("App", () => {
@@ -45,6 +51,9 @@ describe("App", () => {
     await startComparisonFromChat(user);
 
     expect(screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+    expect(screen.getByLabelText("query-text-seed").textContent).toContain(
+      "dreamy indie pop female vocals night drive"
+    );
     expect(screen.getByLabelText("left-track-option")).toBeTruthy();
     expect(screen.getByLabelText("right-track-option")).toBeTruthy();
 
@@ -189,6 +198,9 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByLabelText("comparison-stage")).toBeTruthy();
+    expect(screen.getByLabelText("query-text-seed").textContent).toContain(
+      "dreamy indie pop female vocals night drive"
+    );
     expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
     expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
       "Comparison complete: false"
@@ -261,7 +273,19 @@ describe("App", () => {
 
     render(<App />);
 
-    await startComparisonFromChat(user);
+    await user.type(screen.getByLabelText("message-input"), "I want neon synthwave vibes");
+    await user.click(screen.getByRole("button", { name: "send-message" }));
+    await screen.findByText("Got it. One more: what energy level do you want right now?");
+
+    await user.type(screen.getByLabelText("message-input"), "high-energy and cinematic");
+    await user.click(screen.getByRole("button", { name: "send-message" }));
+    await screen.findByText("Nice. Last one: where would you listen to this music?");
+
+    await user.type(screen.getByLabelText("message-input"), "driving through neon rain at night");
+    await user.click(screen.getByRole("button", { name: "send-message" }));
+    await screen.findByText("Perfect. I can generate your Spotify search phrase now.");
+
+    await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
 
     expect(await screen.findByLabelText("query-generation-error")).toBeTruthy();
 

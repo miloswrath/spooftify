@@ -51,7 +51,7 @@ const EXAMPLE_COMPARISON_PAIRS: ComparisonPair[] = [
 ];
 
 const SWIPE_THRESHOLD_PX = 40;
-const MIN_USER_MESSAGES_FOR_QUERY = 2;
+const MIN_USER_MESSAGES_FOR_QUERY = 3;
 
 const QUERY_GENERATION_ERROR_MESSAGE =
   "Could not generate your Spotify search text. Check LM Studio and retry.";
@@ -70,9 +70,15 @@ const buildQueryGenerationInput = (messages: ChatMessage[]): string | null => {
 
 const getComparisonPairForRound = (
   roundIndex: ComparisonRoundIndex,
-  retryAttempt: number
+  retryAttempt: number,
+  queryTextSeed: string | null
 ): ComparisonPair => {
-  const pairIndex = (roundIndex - 1 + retryAttempt) % EXAMPLE_COMPARISON_PAIRS.length;
+  const firstCharacterCode = queryTextSeed?.trim().toLowerCase().charCodeAt(0) ?? 0;
+  const seedOffset = Number.isNaN(firstCharacterCode)
+    ? 0
+    : firstCharacterCode % EXAMPLE_COMPARISON_PAIRS.length;
+  const pairIndex =
+    (roundIndex - 1 + retryAttempt + seedOffset) % EXAMPLE_COMPARISON_PAIRS.length;
 
   return EXAMPLE_COMPARISON_PAIRS[pairIndex];
 };
@@ -128,6 +134,7 @@ export function App() {
   const [judgement, setJudgement] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [activeQueryText, setActiveQueryText] = useState<string | null>(null);
   const [comparisonPair, setComparisonPair] = useState<ComparisonPair | null>(null);
   const [currentRound, setCurrentRound] = useState<ComparisonRoundIndex>(1);
   const [comparisonComplete, setComparisonComplete] = useState(false);
@@ -150,6 +157,7 @@ export function App() {
     const progress = getProgressFromSession(session);
     setCurrentRound(progress.currentRound);
     setComparisonComplete(progress.comparisonComplete);
+    setActiveQueryText(session.queryText);
     setStep("compare");
   }, []);
 
@@ -158,8 +166,10 @@ export function App() {
       return;
     }
 
-    setComparisonPair(getComparisonPairForRound(currentRound, pairRetryAttempt));
-  }, [step, currentRound, pairRetryAttempt]);
+    setComparisonPair(
+      getComparisonPairForRound(currentRound, pairRetryAttempt, activeQueryText)
+    );
+  }, [step, currentRound, pairRetryAttempt, activeQueryText]);
 
   const generateQueryText = async (queryInput: string): Promise<string> => {
     const response = await fetch("/api/llm/route", {
@@ -191,6 +201,7 @@ export function App() {
 
   const continueToComparisonWithQuery = (queryText: string) => {
     startNewComparisonSession(queryText);
+    setActiveQueryText(queryText);
     setComparisonPair(null);
     setCurrentRound(1);
     setComparisonComplete(false);
@@ -252,10 +263,13 @@ export function App() {
     setIsThinking(true);
 
     setTimeout(() => {
-      const assistantContent =
-        nextUserMessageCount < MIN_USER_MESSAGES_FOR_QUERY
-          ? "Got it. One more: what energy level do you want right now?"
-          : "Perfect. I can generate your Spotify search phrase now.";
+      let assistantContent = "Perfect. I can generate your Spotify search phrase now.";
+
+      if (nextUserMessageCount === 1) {
+        assistantContent = "Got it. One more: what energy level do you want right now?";
+      } else if (nextUserMessageCount === 2) {
+        assistantContent = "Nice. Last one: where would you listen to this music?";
+      }
 
       setChatMessages((previous) => [
         ...previous,
@@ -402,6 +416,9 @@ export function App() {
         >
           <p>
             Round {currentRound} of {COMPARISON_TOTAL_ROUNDS}
+          </p>
+          <p aria-label="query-text-seed" style={{ marginTop: "0" }}>
+            Spotify seed: {activeQueryText ?? "default"}
           </p>
           <div
             style={{
