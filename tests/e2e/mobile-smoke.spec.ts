@@ -12,11 +12,10 @@ const expectNoHorizontalScroll = async (page: Page) => {
 const sendChatTurn = async (page: Page, message: string) => {
   const sendButton = page.getByRole("button", { name: "send-message" });
 
-  await expect(sendButton).toBeEnabled();
   await page.getByLabel("message-input").fill(message);
+  await expect(sendButton).toBeEnabled();
   await sendButton.click();
   await expect(sendButton).toBeDisabled();
-  await expect(sendButton).toBeEnabled();
 };
 
 test("mobile smoke flow reaches comparison and records one selection", async ({ page }) => {
