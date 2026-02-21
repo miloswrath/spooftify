@@ -84,6 +84,26 @@ describe("comparison session storage", () => {
     });
   });
 
+  it("preserves the existing localStorage key and JSON schema", () => {
+    saveRoundChoice({
+      roundIndex: 1,
+      leftTrackId: "track-a",
+      rightTrackId: "track-b",
+      chosenTrackId: "track-a",
+      selectedAt: "2026-02-16T00:00:00.000Z"
+    });
+
+    const rawSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
+
+    expect(rawSession).toBeTruthy();
+    expect(rawSession).toContain('"totalRounds":5');
+    expect(rawSession).toContain('"choices":[{');
+    expect(rawSession).toContain('"roundIndex":1');
+    expect(rawSession).toContain('"leftTrackId":"track-a"');
+    expect(rawSession).toContain('"rightTrackId":"track-b"');
+    expect(rawSession).toContain('"chosenTrackId":"track-a"');
+  });
+
   it("resets the current session from localStorage", () => {
     startNewComparisonSession();
 

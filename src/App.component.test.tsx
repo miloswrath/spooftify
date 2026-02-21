@@ -1,12 +1,35 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
+import { getGlobalQueryText, setGlobalQueryText } from "./lib/queryText";
 
-const LEFT_TRACK_ID = "spotify:track:4uLU6hMCjMI75M1A2tKUQC";
-const RIGHT_TRACK_ID = "spotify:track:1301WleyT98MSxVHPZCA6M";
-const RETRY_LEFT_TRACK_ID = "spotify:track:5ChkMS8OtdzJeqyybCc9R5";
+const GENERATED_QUERY_TEXT = "dreamy indie pop female vocals night drive";
+
+const buildComparisonSearchPayload = (labelPrefix: string) => ({
+  candidates: Array.from({ length: 10 }, (_value, index) => {
+    const trackNumber = index + 1;
+
+    return {
+      id: `${labelPrefix}-track-${trackNumber}`,
+      title: `${labelPrefix} Option ${trackNumber}`,
+      artistNames: ["Test Artist"],
+      previewUrl: `https://audio.example/${labelPrefix}-track-${trackNumber}.mp3`,
+      embedUrl: `https://open.spotify.com/embed/track/${labelPrefix}-track-${trackNumber}`
+    };
+  }),
+  warning: null
+});
+
+const PRIMARY_SEARCH_RESPONSE = buildComparisonSearchPayload("primary");
+const RETRY_SEARCH_RESPONSE = buildComparisonSearchPayload("retry");
+const ROUND_1_LEFT_TRACK_ID = "primary-track-1";
+const ROUND_1_RIGHT_TRACK_ID = "primary-track-2";
+const ROUND_5_LEFT_TRACK_ID = "primary-track-9";
+const RETRY_ROUND_2_LEFT_TRACK_ID = "retry-track-5";
+const mockFetch = vi.fn();
+const originalFetch = globalThis.fetch;
 
 const sendChatMessage = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
   const input = screen.getByLabelText("message-input") as HTMLInputElement;
@@ -26,7 +49,12 @@ const sendChatMessage = async (user: ReturnType<typeof userEvent.setup>, text: s
   });
 };
 
-const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>) => {
+const startComparisonFromChat = async (
+  user: ReturnType<typeof userEvent.setup>,
+  options?: { waitForPair?: boolean }
+) => {
+  const waitForPair = options?.waitForPair ?? true;
+
   expect(screen.getByLabelText("chat-interface")).toBeTruthy();
 
   await sendChatMessage(user, "I want neon synthwave vibes");
@@ -42,20 +70,44 @@ const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>)
   await screen.findByText(/spotify search phrase/i);
 
   await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
-  await screen.findByRole("button", { name: "choose-right-track" });
+
+  if (waitForPair) {
+    await screen.findByRole("button", { name: "choose-right-track" });
+  }
 };
 
 describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    setGlobalQueryText("");
+    mockFetch.mockReset();
+    mockFetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ queryText: "dreamy indie pop female vocals night drive" })
-      }))
-    );
+      if (requestUrl === "/api/llm/route") {
+        return {
+          ok: true,
+          json: async () => ({ queryText: GENERATED_QUERY_TEXT })
+        };
+      }
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        return {
+          ok: true,
+          json: async () => PRIMARY_SEARCH_RESPONSE
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: "unknown_route" })
+      };
+    });
+    globalThis.fetch = mockFetch as typeof fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it("moves from chat stage to comparison round scaffold", async () => {
@@ -66,15 +118,15 @@ describe("App", () => {
     await startComparisonFromChat(user);
 
     expect(screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
-    expect(screen.getByLabelText("query-text-seed").textContent).toContain(
-      "dreamy indie pop female vocals night drive"
-    );
+    expect(screen.getByLabelText("query-text-seed").textContent).toContain(GENERATED_QUERY_TEXT);
     expect(screen.getByLabelText("left-track-option")).toBeTruthy();
     expect(screen.getByLabelText("right-track-option")).toBeTruthy();
 
     const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
     expect(storedSession).toBeTruthy();
     expect(storedSession).toContain('"choices":[]');
+    expect(getGlobalQueryText()).toBe(GENERATED_QUERY_TEXT);
+    expect(mockFetch).toHaveBeenCalledWith("/api/comparison/search?q=dreamy+indie+pop+female+vocals+night+drive");
     expect(storedSession).toContain('"queryText":"dreamy indie pop female vocals night drive"');
   });
 
@@ -96,9 +148,9 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      leftTrackId: LEFT_TRACK_ID,
-      rightTrackId: RIGHT_TRACK_ID,
-      chosenTrackId: LEFT_TRACK_ID
+      leftTrackId: ROUND_1_LEFT_TRACK_ID,
+      rightTrackId: ROUND_1_RIGHT_TRACK_ID,
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
     });
   });
 
@@ -120,9 +172,9 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      leftTrackId: LEFT_TRACK_ID,
-      rightTrackId: RIGHT_TRACK_ID,
-      chosenTrackId: RIGHT_TRACK_ID
+      leftTrackId: ROUND_1_LEFT_TRACK_ID,
+      rightTrackId: ROUND_1_RIGHT_TRACK_ID,
+      chosenTrackId: ROUND_1_RIGHT_TRACK_ID
     });
   });
 
@@ -151,7 +203,7 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      chosenTrackId: LEFT_TRACK_ID
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
     });
   });
 
@@ -195,7 +247,7 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(COMPARISON_TOTAL_ROUNDS);
     expect(storedSession.choices.at(-1)).toMatchObject({
       roundIndex: COMPARISON_TOTAL_ROUNDS,
-      chosenTrackId: LEFT_TRACK_ID
+      chosenTrackId: ROUND_5_LEFT_TRACK_ID
     });
   });
 
@@ -214,7 +266,7 @@ describe("App", () => {
 
     expect(screen.getByLabelText("comparison-stage")).toBeTruthy();
     expect(screen.getByLabelText("query-text-seed").textContent).toContain(
-      "dreamy indie pop female vocals night drive"
+      GENERATED_QUERY_TEXT
     );
     expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
     expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
@@ -230,35 +282,60 @@ describe("App", () => {
     expect(storedSession.choices[1]).toMatchObject({ roundIndex: 2 });
   });
 
-  it("shows retry state on embed failure and keeps round blocked until replacement pair loads", async () => {
+  it("retries by re-fetching candidates while preserving already saved choices", async () => {
     const user = userEvent.setup();
+    let comparisonRequests = 0;
+
+    mockFetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+
+      if (requestUrl === "/api/llm/route") {
+        return {
+          ok: true,
+          json: async () => ({ queryText: GENERATED_QUERY_TEXT })
+        };
+      }
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        comparisonRequests += 1;
+        return {
+          ok: true,
+          json: async () =>
+            comparisonRequests === 1 ? PRIMARY_SEARCH_RESPONSE : RETRY_SEARCH_RESPONSE
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: "unknown_route" })
+      };
+    });
 
     render(<App />);
 
     await startComparisonFromChat(user);
 
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    expect(screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+
     await user.click(screen.getByRole("button", { name: "report-left-embed-unavailable" }));
 
     expect(screen.getByLabelText("embed-retry-state")).toBeTruthy();
-
-    await user.click(screen.getByLabelText("left-track-option"));
-
-    expect(screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
 
     let storedSession = JSON.parse(
       window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
     );
 
-    expect(storedSession.choices).toHaveLength(0);
+    expect(storedSession.choices).toHaveLength(1);
+    expect(storedSession.choices[0]).toMatchObject({
+      roundIndex: 1,
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
+    });
 
     await user.click(screen.getByRole("button", { name: "retry-comparison-pair" }));
 
-    expect(screen.queryByLabelText("embed-retry-state")).toBeNull();
-    expect(screen.getByText("Option C")).toBeTruthy();
-
-    await user.click(screen.getByLabelText("left-track-option"));
-
-    expect(screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+    expect(await screen.findByText("retry Option 5")).toBeTruthy();
 
     storedSession = JSON.parse(
       window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
@@ -267,8 +344,78 @@ describe("App", () => {
     expect(storedSession.choices).toHaveLength(1);
     expect(storedSession.choices[0]).toMatchObject({
       roundIndex: 1,
-      chosenTrackId: RETRY_LEFT_TRACK_ID
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
     });
+
+    await user.click(screen.getByLabelText("left-track-option"));
+
+    expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+
+    storedSession = JSON.parse(
+      window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
+    );
+
+    expect(storedSession.choices).toHaveLength(2);
+    expect(storedSession.choices[0]).toMatchObject({
+      roundIndex: 1,
+      chosenTrackId: ROUND_1_LEFT_TRACK_ID
+    });
+    expect(storedSession.choices[1]).toMatchObject({
+      roundIndex: 2,
+      chosenTrackId: RETRY_ROUND_2_LEFT_TRACK_ID
+    });
+  });
+
+  it("shows a user-safe provider error state and recovers on retry", async () => {
+    const user = userEvent.setup();
+    let comparisonRequests = 0;
+
+    mockFetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+
+      if (requestUrl === "/api/llm/route") {
+        return {
+          ok: true,
+          json: async () => ({ queryText: GENERATED_QUERY_TEXT })
+        };
+      }
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        comparisonRequests += 1;
+
+        if (comparisonRequests === 1) {
+          return {
+            ok: false,
+            json: async () => ({ error: "spotify_rate_limited" })
+          };
+        }
+
+        return {
+          ok: true,
+          json: async () => PRIMARY_SEARCH_RESPONSE
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: "unknown_route" })
+      };
+    });
+
+    render(<App />);
+
+    await startComparisonFromChat(user, { waitForPair: false });
+
+    expect(await screen.findByLabelText("comparison-error-state")).toBeTruthy();
+    expect(
+      screen.getByText("Too many requests hit the music provider. Please wait a moment and retry.")
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("embed-retry-state")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "retry-comparison-search" }));
+
+    expect(await screen.findByText("primary Option 1")).toBeTruthy();
+    expect(screen.queryByLabelText("comparison-error-state")).toBeNull();
   });
 
   it("shows query generation retry UI on failure and proceeds after retry succeeds", async () => {
@@ -282,6 +429,10 @@ describe("App", () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ queryText: "night drive synthwave neon city" })
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => PRIMARY_SEARCH_RESPONSE
     });
 
     vi.stubGlobal("fetch", fetchMock);

@@ -10,3 +10,21 @@ export type LlmClient = {
   summarizeVibe: (input: string) => Promise<{ vibe: string }>;
   generateQueryText: (input: string) => Promise<{ queryText: string }>;
 };
+
+export type SpotifySearchParams = {
+  q: string;
+  type: "track";
+  limit: number;
+};
+
+export type ComparisonTrackCandidate = {
+  id: string;
+  title: string;
+  artistNames: string[];
+  previewUrl: string | null;
+  embedUrl: string;
+};
+
+export type SpotifyClient = {
+  searchTracks: (params: SpotifySearchParams) => Promise<ComparisonTrackCandidate[]>;
+};

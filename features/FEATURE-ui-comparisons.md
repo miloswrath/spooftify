@@ -162,5 +162,5 @@ tests, and clear implementation constraints.
   and keeps desktop layout vertically stacked per current MVP direction.
 - [x] Update `tests/e2e/mobile-smoke.spec.ts` to cover chat -> comparison -> at
   least one successful selection step in the real comparison UI.
-- [ ] Run and pass `pnpm test:unit`, `pnpm test:api`, and `pnpm test:e2e` before
+- [x] Run and pass `pnpm test:unit`, `pnpm test:api`, and `pnpm test:e2e` before
   PR to satisfy constitution quality gates.

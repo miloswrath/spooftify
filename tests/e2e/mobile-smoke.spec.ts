@@ -1,5 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const buildComparisonSearchPayload = () => ({
+  candidates: Array.from({ length: 10 }, (_value, index) => {
+    const trackNumber = index + 1;
+
+    return {
+      id: `e2e-track-${trackNumber}`,
+      title: `E2E Option ${trackNumber}`,
+      artistNames: ["Test Artist"],
+      previewUrl: `https://audio.example/e2e-track-${trackNumber}.mp3`,
+      embedUrl: `https://open.spotify.com/embed/track/e2e-track-${trackNumber}`
+    };
+  }),
+  warning: null
+});
+
 const expectNoHorizontalScroll = async (page: Page) => {
   const hasHorizontalOverflow = await page.evaluate(() => {
     const root = document.documentElement;
@@ -24,6 +39,14 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ queryText: "dreamy synth upbeat drums night drive" })
+    });
+  });
+
+  await page.route("**/api/comparison/search**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(buildComparisonSearchPayload())
     });
   });
 
