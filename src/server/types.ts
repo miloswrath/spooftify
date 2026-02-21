@@ -8,6 +8,7 @@ export type Api2Client = {
 
 export type LlmClient = {
   summarizeVibe: (input: string) => Promise<{ vibe: string }>;
+  generateQueryText: (input: string) => Promise<{ queryText: string }>;
 };
 
 export type SpotifySearchParams = {
@@ -26,5 +27,4 @@ export type ComparisonTrackCandidate = {
 
 export type SpotifyClient = {
   searchTracks: (params: SpotifySearchParams) => Promise<ComparisonTrackCandidate[]>;
-  generateQueryText: (input: string) => Promise<{ queryText: string }>;
 };

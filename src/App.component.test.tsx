@@ -1,13 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
 import { App } from "./App";
-import {
-  COMPARISON_SESSION_STORAGE_KEY,
-  COMPARISON_TOTAL_ROUNDS
-} from "./features/comparison";
+import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
 import { getGlobalQueryText, setGlobalQueryText } from "./lib/queryText";
+
+const GENERATED_QUERY_TEXT = "dreamy indie pop female vocals night drive";
 
 const buildComparisonSearchPayload = (labelPrefix: string) => ({
   candidates: Array.from({ length: 10 }, (_value, index) => {
@@ -51,7 +49,12 @@ const sendChatMessage = async (user: ReturnType<typeof userEvent.setup>, text: s
   });
 };
 
-const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>) => {
+const startComparisonFromChat = async (
+  user: ReturnType<typeof userEvent.setup>,
+  options?: { waitForPair?: boolean }
+) => {
+  const waitForPair = options?.waitForPair ?? true;
+
   expect(screen.getByLabelText("chat-interface")).toBeTruthy();
 
   await sendChatMessage(user, "I want neon synthwave vibes");
@@ -67,25 +70,45 @@ const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>)
   await screen.findByText(/spotify search phrase/i);
 
   await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
-  await screen.findByRole("button", { name: "choose-right-track" });
+
+  if (waitForPair) {
+    await screen.findByRole("button", { name: "choose-right-track" });
+  }
 };
 
 describe("App", () => {
-beforeEach(() => {
-  window.localStorage.clear();
-  setGlobalQueryText("");
-  mockFetch.mockReset();
-  mockFetch.mockResolvedValue({
-    ok: true,
-    json: async () => PRIMARY_SEARCH_RESPONSE
+  beforeEach(() => {
+    window.localStorage.clear();
+    setGlobalQueryText("");
+    mockFetch.mockReset();
+    mockFetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+
+      if (requestUrl === "/api/llm/route") {
+        return {
+          ok: true,
+          json: async () => ({ queryText: GENERATED_QUERY_TEXT })
+        };
+      }
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        return {
+          ok: true,
+          json: async () => PRIMARY_SEARCH_RESPONSE
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: "unknown_route" })
+      };
+    });
+    globalThis.fetch = mockFetch as typeof fetch;
   });
-  globalThis.fetch = mockFetch as typeof fetch;
-});
 
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-});
-
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
 
   it("moves from chat stage to comparison round scaffold", async () => {
     const user = userEvent.setup();
@@ -95,17 +118,15 @@ afterEach(() => {
     await startComparisonFromChat(user);
 
     expect(screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
-    expect(screen.getByLabelText("query-text-seed").textContent).toContain(
-      "dreamy indie pop female vocals night drive"
-    );
+    expect(screen.getByLabelText("query-text-seed").textContent).toContain(GENERATED_QUERY_TEXT);
     expect(screen.getByLabelText("left-track-option")).toBeTruthy();
     expect(screen.getByLabelText("right-track-option")).toBeTruthy();
 
     const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
     expect(storedSession).toBeTruthy();
     expect(storedSession).toContain('"choices":[]');
-    expect(getGlobalQueryText()).toBe("I want neon synthwave vibes");
-    expect(mockFetch).toHaveBeenCalledWith("/api/comparison/search?q=I+want+neon+synthwave+vibes");
+    expect(getGlobalQueryText()).toBe(GENERATED_QUERY_TEXT);
+    expect(mockFetch).toHaveBeenCalledWith("/api/comparison/search?q=dreamy+indie+pop+female+vocals+night+drive");
     expect(storedSession).toContain('"queryText":"dreamy indie pop female vocals night drive"');
   });
 
@@ -245,7 +266,7 @@ afterEach(() => {
 
     expect(screen.getByLabelText("comparison-stage")).toBeTruthy();
     expect(screen.getByLabelText("query-text-seed").textContent).toContain(
-      "dreamy indie pop female vocals night drive"
+      GENERATED_QUERY_TEXT
     );
     expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
     expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
@@ -263,16 +284,32 @@ afterEach(() => {
 
   it("retries by re-fetching candidates while preserving already saved choices", async () => {
     const user = userEvent.setup();
+    let comparisonRequests = 0;
 
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => PRIMARY_SEARCH_RESPONSE
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => RETRY_SEARCH_RESPONSE
-      });
+    mockFetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+
+      if (requestUrl === "/api/llm/route") {
+        return {
+          ok: true,
+          json: async () => ({ queryText: GENERATED_QUERY_TEXT })
+        };
+      }
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        comparisonRequests += 1;
+        return {
+          ok: true,
+          json: async () =>
+            comparisonRequests === 1 ? PRIMARY_SEARCH_RESPONSE : RETRY_SEARCH_RESPONSE
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: "unknown_route" })
+      };
+    });
 
     render(<App />);
 
@@ -299,7 +336,6 @@ afterEach(() => {
     await user.click(screen.getByRole("button", { name: "retry-comparison-pair" }));
 
     expect(await screen.findByText("retry Option 5")).toBeTruthy();
-    expect(mockFetch).toHaveBeenCalledTimes(2);
 
     storedSession = JSON.parse(
       window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
@@ -332,30 +368,54 @@ afterEach(() => {
 
   it("shows a user-safe provider error state and recovers on retry", async () => {
     const user = userEvent.setup();
+    let comparisonRequests = 0;
 
-    mockFetch
-      .mockResolvedValueOnce({
+    mockFetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+
+      if (requestUrl === "/api/llm/route") {
+        return {
+          ok: true,
+          json: async () => ({ queryText: GENERATED_QUERY_TEXT })
+        };
+      }
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        comparisonRequests += 1;
+
+        if (comparisonRequests === 1) {
+          return {
+            ok: false,
+            json: async () => ({ error: "spotify_rate_limited" })
+          };
+        }
+
+        return {
+          ok: true,
+          json: async () => PRIMARY_SEARCH_RESPONSE
+        };
+      }
+
+      return {
         ok: false,
-        json: async () => ({ error: "spotify_rate_limited" })
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => PRIMARY_SEARCH_RESPONSE
-      });
+        json: async () => ({ error: "unknown_route" })
+      };
+    });
 
     render(<App />);
 
-    await startComparisonFromChat(user);
+    await startComparisonFromChat(user, { waitForPair: false });
 
     expect(await screen.findByLabelText("comparison-error-state")).toBeTruthy();
-    expect(screen.getByText("Too many requests hit the music provider. Please wait a moment and retry.")).toBeTruthy();
+    expect(
+      screen.getByText("Too many requests hit the music provider. Please wait a moment and retry.")
+    ).toBeTruthy();
     expect(screen.queryByLabelText("embed-retry-state")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "retry-comparison-search" }));
 
-    expect(await screen.findByText("primary Option 3")).toBeTruthy();
+    expect(await screen.findByText("primary Option 1")).toBeTruthy();
     expect(screen.queryByLabelText("comparison-error-state")).toBeNull();
-    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it("shows query generation retry UI on failure and proceeds after retry succeeds", async () => {
@@ -369,6 +429,10 @@ afterEach(() => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ queryText: "night drive synthwave neon city" })
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => PRIMARY_SEARCH_RESPONSE
     });
 
     vi.stubGlobal("fetch", fetchMock);

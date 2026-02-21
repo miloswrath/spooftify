@@ -15,9 +15,8 @@ describe("createServer", () => {
     }
   ]);
   const summarizeVibe = vi.fn(async () => ({ vibe: "chill" }));
-  const stderrWriteSpy = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation(() => true);
+  const generateQueryText = vi.fn(async () => ({ queryText: "dreamy indie pop female vocals" }));
+  const stderrWriteSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
   const server = createServer({
     api1Client: {
@@ -30,9 +29,8 @@ describe("createServer", () => {
       searchTracks
     },
     llmClient: {
-      summarizeVibe
-      summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
-      generateQueryText: vi.fn(async () => ({ queryText: "dreamy indie pop female vocals" }))
+      summarizeVibe,
+      generateQueryText
     }
   });
 
@@ -41,6 +39,7 @@ describe("createServer", () => {
     fetchPair.mockClear();
     searchTracks.mockClear();
     summarizeVibe.mockClear();
+    generateQueryText.mockClear();
     stderrWriteSpy.mockClear();
   });
 
@@ -181,9 +180,7 @@ describe("createServer", () => {
     expect(response.status).toBe(502);
     expect(response.body).toEqual({ error: "provider_unavailable" });
     expect(stderrWriteSpy).toHaveBeenCalled();
-    expect(String(stderrWriteSpy.mock.calls[0]?.[0] ?? "")).toContain(
-      "query_length="
-    );
+    expect(String(stderrWriteSpy.mock.calls[0]?.[0] ?? "")).toContain("query_length=");
     expect(String(stderrWriteSpy.mock.calls[0]?.[0] ?? "")).not.toContain("house");
   });
 
@@ -237,6 +234,9 @@ describe("createServer", () => {
       },
       api2Client: {
         fetchPair: vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }))
+      },
+      spotifyClient: {
+        searchTracks: vi.fn(async () => [])
       },
       llmClient: {
         summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
