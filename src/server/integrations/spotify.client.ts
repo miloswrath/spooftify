@@ -12,8 +12,12 @@ const isNonEmptyString = (value: unknown): value is string => {
 };
 
 const getSpotifyClientCredentials = (): { clientId: string; clientSecret: string } => {
-    const clientId = process.env.SPOTIFY_CLIENT_ID;
-    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    const spotifyApiCredentials = process.env.SPOTIFY_API;
+    const [clientIdFromApi, clientSecretFromApi] =
+        spotifyApiCredentials?.split(":", 2) ?? [];
+
+    const clientId = process.env.SPOTIFY_CLIENT_ID ?? clientIdFromApi;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET ?? clientSecretFromApi;
 
     if (!isNonEmptyString(clientId) || !isNonEmptyString(clientSecret)) {
         throw new Error("missing_spotify_credentials");

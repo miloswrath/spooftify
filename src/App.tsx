@@ -1,10 +1,8 @@
 import { useEffect, useState, type TouchEvent } from "react";
 import { ChatInterface, type ChatMessage } from "./components/ChatInterface";
-import { ComparisonStage } from "./components/ComparisonStage";
 import { JudgementDisplay } from "./components/JudgementDisplay";
 import {
   COMPARISON_TOTAL_ROUNDS,
-  ComparisonSearchError,
   fetchComparisonCandidates,
   loadComparisonSession,
   saveRoundChoice,
@@ -61,34 +59,10 @@ const mapTrackCandidateToTrackOption = (
   embedUrl: candidate.embedUrl
 });
 
-const getComparisonErrorMessage = (error: unknown): string => {
-  if (!(error instanceof ComparisonSearchError)) {
-    return "We couldn't load tracks right now. Retry to try again.";
-  }
-
-  if (error.code === "spotify_auth_failed") {
-    return "Music provider authentication is unavailable right now. Please retry shortly.";
-  }
-
-  if (error.code === "spotify_rate_limited") {
-    return "Too many requests hit the music provider. Please wait a moment and retry.";
-  }
-
-  if (error.code === "network_error") {
-    return "Network issue while fetching tracks. Check connection and retry.";
-  }
-
-  if (error.code === "invalid_query_text") {
-    return "We need a clearer vibe description before searching. Add more detail and retry.";
-  }
-
-  return "Track search is temporarily unavailable. Retry to continue.";
-};
-
 const getComparisonPairForRound = (
   roundIndex: ComparisonRoundIndex,
-  retryAttempt: number,
-  candidates: TrackOption[]
+  retryAttempt: number
+  , candidates: TrackOption[]
 ): ComparisonPair | null => {
   if (candidates.length < 2) {
     return null;
@@ -166,7 +140,6 @@ export function App() {
     FALLBACK_COMPARISON_CANDIDATES
   );
   const [isComparisonLoading, setIsComparisonLoading] = useState(false);
-  const [comparisonError, setComparisonError] = useState("");
   const [currentRound, setCurrentRound] = useState<ComparisonRoundIndex>(1);
   const [comparisonComplete, setComparisonComplete] = useState(false);
   const [pairRetryAttempt, setPairRetryAttempt] = useState(0);
@@ -213,8 +186,7 @@ export function App() {
     const queryText = getGlobalQueryText();
 
     if (!queryText) {
-      setComparisonError("No vibe query is available for this session. Retry from chat to continue.");
-      setComparisonCandidates([]);
+      setComparisonCandidates(FALLBACK_COMPARISON_CANDIDATES);
       return;
     }
 
@@ -232,21 +204,17 @@ export function App() {
 
         const mappedCandidates = result.candidates.map(mapTrackCandidateToTrackOption);
 
-        if (mappedCandidates.length >= 2) {
-          setComparisonCandidates(mappedCandidates);
-          setComparisonError("");
-          return;
-        }
-
-        setComparisonCandidates([]);
-        setComparisonError("We couldn't find enough playable tracks. Retry to fetch another set.");
-      } catch (error) {
+        setComparisonCandidates(
+          mappedCandidates.length >= 2
+            ? mappedCandidates
+            : FALLBACK_COMPARISON_CANDIDATES
+        );
+      } catch {
         if (isCancelled) {
           return;
         }
 
-        setComparisonCandidates([]);
-        setComparisonError(getComparisonErrorMessage(error));
+        setComparisonCandidates(FALLBACK_COMPARISON_CANDIDATES);
       } finally {
         if (!isCancelled) {
           setIsComparisonLoading(false);
@@ -268,7 +236,6 @@ export function App() {
     setCurrentRound(1);
     setComparisonComplete(false);
     setPairRetryAttempt(0);
-    setComparisonError("");
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
     setEmbedFailures({ left: false, right: false });
     setStep("compare");
@@ -337,7 +304,6 @@ export function App() {
 
   const handleRetryPair = () => {
     setPairRetryAttempt((previousAttempt) => previousAttempt + 1);
-    setComparisonError("");
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
     setEmbedFailures({ left: false, right: false });
   };
@@ -376,15 +342,8 @@ export function App() {
   );
   const hasEmbedFailure = embedFailures.left || embedFailures.right;
   const showRetryState =
-    step === "compare" &&
-    !comparisonError &&
-    !isComparisonLoading &&
-    (!hasValidPairData || hasEmbedFailure);
-  const canSelectRound =
-    !comparisonComplete &&
-    !comparisonError &&
-    hasValidPairData &&
-    !hasEmbedFailure;
+    step === "compare" && !isComparisonLoading && (!hasValidPairData || hasEmbedFailure);
+  const canSelectRound = !comparisonComplete && hasValidPairData && !hasEmbedFailure;
 
   return (
     <main
@@ -411,24 +370,158 @@ export function App() {
           />
         </section>
       ) : step === "compare" ? (
-        <ComparisonStage
-          currentRound={currentRound}
-          comparisonPair={comparisonPair}
-          comparisonComplete={comparisonComplete}
-          isComparisonLoading={isComparisonLoading}
-          comparisonError={comparisonError}
-          showRetryState={showRetryState}
-          canSelectRound={canSelectRound}
-          onSelectTrack={handleSelectTrack}
-          onEmbedError={handleEmbedError}
-          onRetryPair={handleRetryPair}
+        <section
+          aria-label="comparison-stage"
           onTouchStart={handleComparisonTouchStart}
           onTouchEnd={handleComparisonTouchEnd}
-          onTriggerFinalJudgement={() => {
-            setJudgement("You've got eclectic taste with a love for introspection—the kind of person who curates playlists like they're building a personality.");
-            setStep("judgement");
-          }}
-        />
+        >
+          <p>
+            Round {currentRound} of {COMPARISON_TOTAL_ROUNDS}
+          </p>
+          {isComparisonLoading ? <p>Loading comparison tracks...</p> : null}
+          <div
+            style={{
+              display: "grid",
+              gap: "16px",
+              gridTemplateColumns: "1fr"
+            }}
+          >
+            {(["left", "right"] as const).map((side) => {
+              const option = side === "left" ? comparisonPair?.left : comparisonPair?.right;
+              const hasValidTrackData = Boolean(option?.id && option.embedUrl);
+              const canSelect = hasValidTrackData && canSelectRound;
+
+              return (
+                <article
+                  key={side}
+                  aria-label={`${side}-track-option`}
+                  role="button"
+                  aria-disabled={!canSelect}
+                  tabIndex={canSelect ? 0 : -1}
+                  onClick={() => {
+                    if (!canSelect) {
+                      return;
+                    }
+
+                    handleSelectTrack(side);
+                  }}
+                  onKeyDown={(event) => {
+                    if (!canSelect) {
+                      return;
+                    }
+
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleSelectTrack(side);
+                    }
+                  }}
+                  style={{
+                    border: "1px solid #d4d4d4",
+                    borderRadius: "12px",
+                    padding: "16px",
+                    opacity: canSelect ? 1 : 0.6
+                  }}
+                >
+                  <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>
+                    {option?.title ?? "Loading option..."}
+                  </h2>
+                  {hasValidTrackData ? (
+                    <>
+                      <iframe
+                        title={`${side}-spotify-embed`}
+                        src={option?.embedUrl ?? ""}
+                        width="100%"
+                        height="232"
+                        style={{ border: "none", borderRadius: "12px" }}
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                      />
+                      <button
+                        type="button"
+                        aria-label={`choose-${side}-track`}
+                        disabled={!canSelect}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleSelectTrack(side);
+                        }}
+                        style={{
+                          marginTop: "12px",
+                          minHeight: "44px",
+                          padding: "10px 12px",
+                          width: "100%"
+                        }}
+                      >
+                        Choose {side === "left" ? "Top" : "Bottom"} track
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`report-${side}-embed-unavailable`}
+                        disabled={comparisonComplete}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEmbedError(side);
+                        }}
+                        style={{
+                          marginTop: "8px",
+                          minHeight: "36px",
+                          padding: "8px 10px",
+                          width: "100%"
+                        }}
+                      >
+                        This embed is unavailable
+                      </button>
+                    </>
+                  ) : (
+                    <div
+                      style={{
+                        alignItems: "center",
+                        border: "1px dashed #a3a3a3",
+                        borderRadius: "12px",
+                        display: "flex",
+                        height: "232px",
+                        justifyContent: "center"
+                      }}
+                    >
+                      <span>Waiting for valid track data...</span>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+          {showRetryState ? (
+            <div
+              aria-label="embed-retry-state"
+              style={{
+                border: "1px solid #f59e0b",
+                borderRadius: "12px",
+                marginTop: "16px",
+                padding: "12px"
+              }}
+            >
+              <p style={{ margin: "0 0 8px" }}>
+                One or both Spotify embeds are unavailable. Retry to load a new pair.
+              </p>
+              <button type="button" aria-label="retry-comparison-pair" onClick={handleRetryPair}>
+                Retry pair
+              </button>
+            </div>
+          ) : null}
+          <p aria-label="comparison-complete-state" style={{ marginTop: "16px" }}>
+            Comparison complete: {comparisonComplete ? "true" : "false"}
+          </p>
+          <button
+            type="button"
+            aria-label="trigger-final-judgement"
+            disabled={!comparisonComplete}
+            onClick={() => {
+              setJudgement("You've got eclectic taste with a love for introspection—the kind of person who curates playlists like they're building a personality.");
+              setStep("judgement");
+            }}
+          >
+            Generate final judgement
+          </button>
+        </section>
       ) : step === "judgement" ? (
         <JudgementDisplay
           judgement={judgement}
