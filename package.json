@@ -4,7 +4,7 @@
   "description": "Lightweight MVP scaffold for Spooftify",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev": "concurrently -k \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "vite",
     "dev:api": "tsx watch src/server/index.ts",
     "build": "vite build && tsc -p tsconfig.server.json",

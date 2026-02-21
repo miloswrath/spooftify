@@ -3,6 +3,7 @@ import {
   COMPARISON_TOTAL_ROUNDS
 } from "./constants";
 import type {
+  QUERY_TEXT,
   ComparisonRoundChoice,
   ComparisonRoundIndex,
   ComparisonSessionState
@@ -41,13 +42,20 @@ const isValidSessionState = (value: unknown): value is ComparisonSessionState =>
   return (
     session.totalRounds === COMPARISON_TOTAL_ROUNDS &&
     Array.isArray(session.choices) &&
-    session.choices.every((choice) => isValidRoundChoice(choice))
+    session.choices.every((choice) => isValidRoundChoice(choice)) &&
+    (session.queryText === undefined || typeof session.queryText === "string" || session.queryText === null)
   );
 };
 
 const createEmptySession = (): ComparisonSessionState => ({
   totalRounds: COMPARISON_TOTAL_ROUNDS,
-  choices: []
+  choices: [],
+  queryText: null
+});
+
+const normalizeSessionState = (session: ComparisonSessionState): ComparisonSessionState => ({
+  ...session,
+  queryText: typeof session.queryText === "string" ? session.queryText : null
 });
 
 export const loadComparisonSession = (): ComparisonSessionState | null => {
@@ -64,7 +72,7 @@ export const loadComparisonSession = (): ComparisonSessionState | null => {
       return null;
     }
 
-    return parsed;
+    return normalizeSessionState(parsed);
   } catch {
     return null;
   }
@@ -81,8 +89,13 @@ export const saveComparisonSession = (
   return session;
 };
 
-export const startNewComparisonSession = (): ComparisonSessionState => {
-  const newSession = createEmptySession();
+export const startNewComparisonSession = (
+  queryText: QUERY_TEXT | null = null
+): ComparisonSessionState => {
+  const newSession: ComparisonSessionState = {
+    ...createEmptySession(),
+    queryText
+  };
 
   return saveComparisonSession(newSession);
 };
@@ -107,4 +120,13 @@ export const saveRoundChoice = (
   };
 
   return saveComparisonSession(nextSession);
+};
+
+export const saveQueryText = (queryText: QUERY_TEXT): ComparisonSessionState => {
+  const session = loadComparisonSession() ?? createEmptySession();
+
+  return saveComparisonSession({
+    ...session,
+    queryText
+  });
 };

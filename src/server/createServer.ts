@@ -164,8 +164,15 @@ export function createServer(deps: ServerDeps) {
       return;
     }
 
-    const summary = await deps.llmClient.summarizeVibe(message);
-    res.status(200).json(summary);
+    try {
+      const result = await deps.llmClient.generateQueryText(message);
+      res.status(200).json(result);
+    } catch {
+      res.status(503).json({
+        error: "query_text_unavailable",
+        message: "Could not generate your Spotify search text. Please retry."
+      });
+    }
   });
 
   return app;

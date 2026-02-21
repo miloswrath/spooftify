@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { COMPARISON_SESSION_STORAGE_KEY, COMPARISON_TOTAL_ROUNDS } from "./features/comparison";
 import { App } from "./App";
 import {
   COMPARISON_SESSION_STORAGE_KEY,
@@ -32,29 +33,59 @@ const RETRY_ROUND_2_LEFT_TRACK_ID = "retry-track-5";
 const mockFetch = vi.fn();
 const originalFetch = globalThis.fetch;
 
+const sendChatMessage = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
+  const input = screen.getByLabelText("message-input") as HTMLInputElement;
+
+  await user.type(input, text);
+
+  const sendButton = screen.getByRole("button", { name: "send-message" }) as HTMLButtonElement;
+
+  await waitFor(() => {
+    expect(sendButton.disabled).toBe(false);
+  });
+
+  await user.click(sendButton);
+
+  await waitFor(() => {
+    expect(input.value).toBe("");
+  });
+};
+
 const startComparisonFromChat = async (user: ReturnType<typeof userEvent.setup>) => {
   expect(screen.getByLabelText("chat-interface")).toBeTruthy();
 
-  await user.type(screen.getByLabelText("message-input"), "I want neon synthwave vibes");
-  await user.click(screen.getByRole("button", { name: "send-message" }));
+  await sendChatMessage(user, "I want neon synthwave vibes");
+  expect(screen.queryByRole("button", { name: "continue-to-comparison" })).toBeNull();
+
+  await screen.findByText(/(energy|tempo|chaos|sprint|send)/i);
+
+  await sendChatMessage(user, "high-energy and cinematic");
+  await screen.findByText(/last one before i summon the algorithm/i);
+  expect(screen.queryByRole("button", { name: "continue-to-comparison" })).toBeNull();
+
+  await sendChatMessage(user, "driving through neon rain at night");
+  await screen.findByText(/spotify search phrase/i);
+
   await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
+  await screen.findByRole("button", { name: "choose-right-track" });
 };
 
 describe("App", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    setGlobalQueryText("");
-    mockFetch.mockReset();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => PRIMARY_SEARCH_RESPONSE
-    });
-    globalThis.fetch = mockFetch as typeof fetch;
+beforeEach(() => {
+  window.localStorage.clear();
+  setGlobalQueryText("");
+  mockFetch.mockReset();
+  mockFetch.mockResolvedValue({
+    ok: true,
+    json: async () => PRIMARY_SEARCH_RESPONSE
   });
+  globalThis.fetch = mockFetch as typeof fetch;
+});
 
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-  });
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+
 
   it("moves from chat stage to comparison round scaffold", async () => {
     const user = userEvent.setup();
@@ -64,6 +95,9 @@ describe("App", () => {
     await startComparisonFromChat(user);
 
     expect(screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+    expect(screen.getByLabelText("query-text-seed").textContent).toContain(
+      "dreamy indie pop female vocals night drive"
+    );
     expect(screen.getByLabelText("left-track-option")).toBeTruthy();
     expect(screen.getByLabelText("right-track-option")).toBeTruthy();
 
@@ -72,6 +106,7 @@ describe("App", () => {
     expect(storedSession).toContain('"choices":[]');
     expect(getGlobalQueryText()).toBe("I want neon synthwave vibes");
     expect(mockFetch).toHaveBeenCalledWith("/api/comparison/search?q=I+want+neon+synthwave+vibes");
+    expect(storedSession).toContain('"queryText":"dreamy indie pop female vocals night drive"');
   });
 
   it("saves left selection from card tap and advances exactly one round", async () => {
@@ -209,6 +244,9 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByLabelText("comparison-stage")).toBeTruthy();
+    expect(screen.getByLabelText("query-text-seed").textContent).toContain(
+      "dreamy indie pop female vocals night drive"
+    );
     expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
     expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
       "Comparison complete: false"
@@ -318,5 +356,44 @@ describe("App", () => {
     expect(await screen.findByText("primary Option 3")).toBeTruthy();
     expect(screen.queryByLabelText("comparison-error-state")).toBeNull();
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows query generation retry UI on failure and proceeds after retry succeeds", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "query_text_unavailable" })
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ queryText: "night drive synthwave neon city" })
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await sendChatMessage(user, "I want neon synthwave vibes");
+    await screen.findByText(/(energy|tempo|chaos|sprint|send)/i);
+
+    await sendChatMessage(user, "high-energy and cinematic");
+    await screen.findByText(/last one before i summon the algorithm/i);
+
+    await sendChatMessage(user, "driving through neon rain at night");
+    await screen.findByText(/spotify search phrase/i);
+
+    await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
+
+    expect(await screen.findByLabelText("query-generation-error")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "retry-query-generation" }));
+
+    expect(await screen.findByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
+
+    const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
+
+    expect(storedSession).toContain('"queryText":"night drive synthwave neon city"');
   });
 });

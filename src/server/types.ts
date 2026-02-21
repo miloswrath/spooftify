@@ -26,4 +26,5 @@ export type ComparisonTrackCandidate = {
 
 export type SpotifyClient = {
   searchTracks: (params: SpotifySearchParams) => Promise<ComparisonTrackCandidate[]>;
+  generateQueryText: (input: string) => Promise<{ queryText: string }>;
 };

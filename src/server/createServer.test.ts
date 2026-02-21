@@ -31,6 +31,8 @@ describe("createServer", () => {
     },
     llmClient: {
       summarizeVibe
+      summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
+      generateQueryText: vi.fn(async () => ({ queryText: "dreamy indie pop female vocals" }))
     }
   });
 
@@ -225,6 +227,33 @@ describe("createServer", () => {
       .send({ message: "I want chill indie vibes" });
 
     expect(response.status).toBe(200);
-    expect(response.body.vibe).toBe("chill");
+    expect(response.body.queryText).toBe("dreamy indie pop female vocals");
+  });
+
+  it("returns user-safe retryable error when local llm is unavailable", async () => {
+    const failingServer = createServer({
+      api1Client: {
+        fetchPreviewTrack: vi.fn(async (seed: string) => ({ id: "t1", title: seed }))
+      },
+      api2Client: {
+        fetchPair: vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }))
+      },
+      llmClient: {
+        summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
+        generateQueryText: vi.fn(async () => {
+          throw new Error("timeout");
+        })
+      }
+    });
+
+    const response = await request(failingServer)
+      .post("/api/llm/route")
+      .send({ message: "I want chill indie vibes" });
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      error: "query_text_unavailable",
+      message: "Could not generate your Spotify search text. Please retry."
+    });
   });
 });
