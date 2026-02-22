@@ -2,8 +2,8 @@ import { useEffect, useState, type TouchEvent } from "react";
 import { ChatInterface, type ChatMessage } from "./components/ChatInterface";
 import { JudgementDisplay } from "./components/JudgementDisplay";
 import {
-  ComparisonSearchError,
   COMPARISON_TOTAL_ROUNDS,
+  ComparisonSearchError,
   fetchComparisonCandidates,
   loadComparisonSession,
   saveRoundChoice,
