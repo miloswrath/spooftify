@@ -97,6 +97,15 @@ describe("App", () => {
         };
       }
 
+      if (requestUrl.startsWith("https://open.spotify.com/oembed")) {
+        return {
+          ok: true,
+          json: async () => ({
+            iframe_url: "https://open.spotify.com/embed/track/mock-track"
+          })
+        };
+      }
+
       return {
         ok: false,
         json: async () => ({ error: "unknown_route" })
@@ -304,6 +313,15 @@ describe("App", () => {
         };
       }
 
+      if (requestUrl.startsWith("https://open.spotify.com/oembed")) {
+        return {
+          ok: true,
+          json: async () => ({
+            iframe_url: "https://open.spotify.com/embed/track/mock-track"
+          })
+        };
+      }
+
       return {
         ok: false,
         json: async () => ({ error: "unknown_route" })
@@ -395,6 +413,15 @@ describe("App", () => {
         };
       }
 
+      if (requestUrl.startsWith("https://open.spotify.com/oembed")) {
+        return {
+          ok: true,
+          json: async () => ({
+            iframe_url: "https://open.spotify.com/embed/track/mock-track"
+          })
+        };
+      }
+
       return {
         ok: false,
         json: async () => ({ error: "unknown_route" })
@@ -429,9 +456,27 @@ describe("App", () => {
       ok: true,
       json: async () => ({ queryText: "night drive synthwave neon city" })
     });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => PRIMARY_SEARCH_RESPONSE
+    fetchMock.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        return {
+          ok: true,
+          json: async () => PRIMARY_SEARCH_RESPONSE
+        };
+      }
+
+      if (requestUrl.startsWith("https://open.spotify.com/oembed")) {
+        return {
+          ok: true,
+          json: async () => ({ iframe_url: "https://open.spotify.com/embed/track/mock-track" })
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: "unknown_route" })
+      };
     });
 
     vi.stubGlobal("fetch", fetchMock);
@@ -458,5 +503,45 @@ describe("App", () => {
     const storedSession = window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY);
 
     expect(storedSession).toContain('"queryText":"night drive synthwave neon city"');
+  });
+
+  it("shows embed retry state when oEmbed fetch fails", async () => {
+    const user = userEvent.setup();
+
+    mockFetch.mockImplementation(async (input) => {
+      const requestUrl = String(input);
+
+      if (requestUrl === "/api/llm/route") {
+        return {
+          ok: true,
+          json: async () => ({ queryText: GENERATED_QUERY_TEXT })
+        };
+      }
+
+      if (requestUrl.startsWith("/api/comparison/search")) {
+        return {
+          ok: true,
+          json: async () => PRIMARY_SEARCH_RESPONSE
+        };
+      }
+
+      if (requestUrl.startsWith("https://open.spotify.com/oembed")) {
+        return {
+          ok: false,
+          json: async () => ({})
+        };
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ error: "unknown_route" })
+      };
+    });
+
+    render(<App />);
+
+    await startComparisonFromChat(user, { waitForPair: false });
+
+    expect(await screen.findByLabelText("embed-retry-state")).toBeTruthy();
   });
 });

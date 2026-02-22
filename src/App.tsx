@@ -6,6 +6,7 @@ import {
   ComparisonSearchError,
   fetchComparisonCandidates,
   loadComparisonSession,
+  resolveSpotifyEmbedUrl,
   saveRoundChoice,
   startNewComparisonSession,
   type ComparisonRoundIndex,
@@ -330,6 +331,10 @@ export function App() {
     left: false,
     right: false
   });
+  const [embedUrls, setEmbedUrls] = useState<Record<ComparisonSide, string | null>>({
+    left: null,
+    right: null
+  });
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const userMessageCount = chatMessages.filter((message) => message.role === "user").length;
   const canContinueToComparison = userMessageCount >= MIN_USER_MESSAGES_FOR_QUERY;
@@ -417,6 +422,55 @@ export function App() {
     };
   }, [step, comparisonFetchVersion]);
 
+  useEffect(() => {
+    if (step !== "compare") {
+      return;
+    }
+
+    const leftUri = comparisonPair?.left.uri;
+    const rightUri = comparisonPair?.right.uri;
+
+    if (!leftUri || !rightUri) {
+      setEmbedUrls({ left: null, right: null });
+      return;
+    }
+
+    let isCancelled = false;
+
+    setEmbedUrls({ left: null, right: null });
+
+    const resolveEmbedForSide = async (side: ComparisonSide, uri: string) => {
+      try {
+        const embedUrl = await resolveSpotifyEmbedUrl(uri);
+
+        if (isCancelled) {
+          return;
+        }
+
+        setEmbedUrls((previousUrls) => ({
+          ...previousUrls,
+          [side]: embedUrl
+        }));
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+
+        setEmbedFailures((previousFailures) => ({
+          ...previousFailures,
+          [side]: true
+        }));
+      }
+    };
+
+    void resolveEmbedForSide("left", leftUri);
+    void resolveEmbedForSide("right", rightUri);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [step, comparisonPair?.left.uri, comparisonPair?.right.uri]);
+
   const generateQueryText = async (queryInput: string): Promise<string> => {
     const response = await fetch("/api/llm/route", {
       method: "POST",
@@ -455,6 +509,7 @@ export function App() {
     setPairRetryAttempt(0);
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
     setEmbedFailures({ left: false, right: false });
+    setEmbedUrls({ left: null, right: null });
     setComparisonErrorMessage("");
     setStep("compare");
   };
@@ -568,6 +623,7 @@ export function App() {
     setPairRetryAttempt((previousAttempt) => previousAttempt + 1);
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
     setEmbedFailures({ left: false, right: false });
+    setEmbedUrls({ left: null, right: null });
     setComparisonErrorMessage("");
   };
 
@@ -605,8 +661,10 @@ export function App() {
   const hasValidPairData = Boolean(
     comparisonPair?.left.id &&
     comparisonPair.left.uri &&
+    embedUrls.left &&
     comparisonPair?.right.id &&
-    comparisonPair.right.uri
+    comparisonPair.right.uri &&
+    embedUrls.right
   );
   const hasEmbedFailure = embedFailures.left || embedFailures.right;
   const showRetryState =
@@ -704,7 +762,8 @@ export function App() {
             >
               {(["left", "right"] as const).map((side) => {
                 const option = side === "left" ? comparisonPair?.left : comparisonPair?.right;
-                const hasValidTrackData = Boolean(option?.id && option.uri);
+                const optionEmbedUrl = side === "left" ? embedUrls.left : embedUrls.right;
+                const hasValidTrackData = Boolean(option?.id && option.uri && optionEmbedUrl);
                 const canSelect = hasValidTrackData && canSelectRound;
 
                 return (
@@ -745,7 +804,7 @@ export function App() {
                       <>
                         <iframe
                           title={`${side}-spotify-embed`}
-                          src={option?.uri ? `https://open.spotify.com/embed?uri=${encodeURIComponent(option.uri)}` : ""}
+                          src={optionEmbedUrl ?? ""}
                           width="100%"
                           height="232"
                           style={{ border: "none", borderRadius: "12px" }}
