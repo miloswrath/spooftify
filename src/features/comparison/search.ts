@@ -6,8 +6,7 @@ export interface ComparisonTrackCandidate {
   id: string;
   title: string;
   artistNames: string[];
-  previewUrl: string;
-  embedUrl: string;
+  uri: string;
 }
 
 export interface ComparisonSearchWarning {
@@ -55,8 +54,7 @@ const isComparisonTrackCandidate = (
     isNonEmptyString(candidate.title) &&
     Array.isArray(candidate.artistNames) &&
     candidate.artistNames.every((artistName) => isNonEmptyString(artistName)) &&
-    isNonEmptyString(candidate.previewUrl) &&
-    isNonEmptyString(candidate.embedUrl)
+    isNonEmptyString(candidate.uri)
   );
 };
 

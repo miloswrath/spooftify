@@ -15,8 +15,7 @@ const buildComparisonSearchPayload = (labelPrefix: string) => ({
       id: `${labelPrefix}-track-${trackNumber}`,
       title: `${labelPrefix} Option ${trackNumber}`,
       artistNames: ["Test Artist"],
-      previewUrl: `https://audio.example/${labelPrefix}-track-${trackNumber}.mp3`,
-      embedUrl: `https://open.spotify.com/embed/track/${labelPrefix}-track-${trackNumber}`
+      uri: `spotify:track:${labelPrefix}-track-${trackNumber}`
     };
   }),
   warning: null

@@ -17,7 +17,7 @@ import { getGlobalQueryText, setGlobalQueryText } from "./lib/queryText";
 interface TrackOption {
   id: string;
   title: string;
-  embedUrl: string;
+  uri: string;
 }
 
 interface ComparisonPair {
@@ -31,22 +31,22 @@ const FALLBACK_COMPARISON_CANDIDATES: TrackOption[] = [
   {
     id: "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
     title: "Option A",
-    embedUrl: "https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC"
+    uri: "spotify:track:4uLU6hMCjMI75M1A2tKUQC"
   },
   {
     id: "spotify:track:1301WleyT98MSxVHPZCA6M",
     title: "Option B",
-    embedUrl: "https://open.spotify.com/embed/track/1301WleyT98MSxVHPZCA6M"
+    uri: "spotify:track:1301WleyT98MSxVHPZCA6M"
   },
   {
     id: "spotify:track:5ChkMS8OtdzJeqyybCc9R5",
     title: "Option C",
-    embedUrl: "https://open.spotify.com/embed/track/5ChkMS8OtdzJeqyybCc9R5"
+    uri: "spotify:track:5ChkMS8OtdzJeqyybCc9R5"
   },
   {
     id: "spotify:track:3AJwUDP919kvQ9QcozQPxg",
     title: "Option D",
-    embedUrl: "https://open.spotify.com/embed/track/3AJwUDP919kvQ9QcozQPxg"
+    uri: "spotify:track:3AJwUDP919kvQ9QcozQPxg"
   }
 ];
 
@@ -220,7 +220,7 @@ const mapTrackCandidateToTrackOption = (
 ): TrackOption => ({
   id: candidate.id,
   title: candidate.title,
-  embedUrl: candidate.embedUrl
+  uri: candidate.uri
 });
 
 const getComparisonErrorMessage = (error: unknown): string => {
@@ -535,9 +535,9 @@ export function App() {
       comparisonComplete ||
       hasEmbedFailure ||
       !left?.id ||
-      !left.embedUrl ||
+      !left.uri ||
       !right?.id ||
-      !right.embedUrl
+      !right.uri
     ) {
       return;
     }
@@ -604,9 +604,9 @@ export function App() {
 
   const hasValidPairData = Boolean(
     comparisonPair?.left.id &&
-    comparisonPair.left.embedUrl &&
+    comparisonPair.left.uri &&
     comparisonPair?.right.id &&
-    comparisonPair.right.embedUrl
+    comparisonPair.right.uri
   );
   const hasEmbedFailure = embedFailures.left || embedFailures.right;
   const showRetryState =
@@ -704,7 +704,7 @@ export function App() {
             >
               {(["left", "right"] as const).map((side) => {
                 const option = side === "left" ? comparisonPair?.left : comparisonPair?.right;
-                const hasValidTrackData = Boolean(option?.id && option.embedUrl);
+                const hasValidTrackData = Boolean(option?.id && option.uri);
                 const canSelect = hasValidTrackData && canSelectRound;
 
                 return (
@@ -745,7 +745,7 @@ export function App() {
                       <>
                         <iframe
                           title={`${side}-spotify-embed`}
-                          src={option?.embedUrl ?? ""}
+                          src={option?.uri ? `https://open.spotify.com/embed?uri=${encodeURIComponent(option.uri)}` : ""}
                           width="100%"
                           height="232"
                           style={{ border: "none", borderRadius: "12px" }}
