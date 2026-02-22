@@ -84,8 +84,8 @@ describe("createServer", () => {
         }
       ],
       warning: {
-        code: "insufficient_previewable_tracks",
-        message: "Fewer than 10 comparison tracks were returned. Retry to fetch another set."
+        code: "insufficient_comparison_candidates",
+        message: "Fewer than 10 comparison candidates were returned. Retry to fetch another set."
       }
     });
     expect(searchTracks).toHaveBeenCalledWith({
@@ -130,8 +130,8 @@ describe("createServer", () => {
       }
     ]);
     expect(response.body.warning).toEqual({
-      code: "insufficient_previewable_tracks",
-      message: "Fewer than 10 comparison tracks were returned. Retry to fetch another set."
+      code: "insufficient_comparison_candidates",
+      message: "Fewer than 10 comparison candidates were returned. Retry to fetch another set."
     });
   });
 

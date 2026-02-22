@@ -165,8 +165,8 @@ export function createServer(deps: ServerDeps) {
       const warning =
         limitedCandidates.length < MAX_COMPARISON_CANDIDATES
           ? {
-            code: "insufficient_previewable_tracks",
-            message: "Fewer than 10 comparison tracks were returned. Retry to fetch another set."
+            code: "insufficient_comparison_candidates",
+            message: "Fewer than 10 comparison candidates were returned. Retry to fetch another set."
           }
           : null;
 
