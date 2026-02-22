@@ -74,11 +74,15 @@ const mapSpotifySearchItem = (item: unknown): ComparisonTrackCandidate | null =>
     const candidate = item as {
         id?: unknown;
         name?: unknown;
-        preview_url?: unknown;
+        uri?: unknown;
         artists?: Array<{ name?: unknown }>;
     };
 
-    if (!isNonEmptyString(candidate.id) || !isNonEmptyString(candidate.name)) {
+    if (
+        !isNonEmptyString(candidate.id) ||
+        !isNonEmptyString(candidate.name) ||
+        !isNonEmptyString(candidate.uri)
+    ) {
         return null;
     }
 
@@ -88,16 +92,11 @@ const mapSpotifySearchItem = (item: unknown): ComparisonTrackCandidate | null =>
             .filter((name): name is string => isNonEmptyString(name))
         : [];
 
-    const previewUrl = isNonEmptyString(candidate.preview_url)
-        ? candidate.preview_url
-        : null;
-
     return {
         id: candidate.id,
         title: candidate.name,
         artistNames,
-        previewUrl,
-        embedUrl: `https://open.spotify.com/embed/track/${encodeURIComponent(candidate.id)}`
+        uri: candidate.uri
     };
 };
 
@@ -109,7 +108,8 @@ export function createSpotifyClient(): SpotifyClient {
             const searchParams = new URLSearchParams({
                 q: params.q,
                 type: params.type,
-                limit: String(params.limit)
+                limit: String(params.limit),
+                offset: String(params.offset)
             });
 
             let response: Response;
