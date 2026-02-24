@@ -43,7 +43,7 @@ describe("createLlmClient.generateQueryText", () => {
 
     const payload = JSON.parse(options.body);
 
-    expect(payload.model).toBe("qwen5.2");
+    expect(payload.model).toBe("zai-org/glm-4.7-flash");
     expect(payload.messages[0].role).toBe("system");
     expect(typeof payload.messages[0].content).toBe("string");
     expect(payload.messages[1]).toEqual({

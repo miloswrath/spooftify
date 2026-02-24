@@ -4,7 +4,7 @@
   --app-fg: #e5e7eb;
   --app-muted: #9ca3af;
   --app-border: rgba(156, 163, 175, 0.25);
-  --app-panel: rgba(3, 7, 18, 0.72);
+  --app-panel: rgba(3, 7, 18, 0.82);
   --app-shadow: 0 28px 70px rgba(2, 6, 23, 0.55);
   --app-space-1: 8px;
   --app-space-2: 12px;
@@ -23,6 +23,7 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
 }
 
 body {
@@ -58,6 +59,10 @@ textarea {
   position: relative;
   width: 100%;
   z-index: 1;
+}
+
+.app-main > * {
+  min-width: 0;
 }
 
 .app-main h1 {
@@ -114,8 +119,9 @@ textarea {
   border-radius: 16px;
   display: grid;
   grid-template-columns: 1fr 56px;
+  min-width: 0;
   overflow: hidden;
-  transition: border-color 140ms ease, box-shadow 170ms ease;
+  transition: border-color 190ms ease, box-shadow 220ms ease;
 }
 
 .comparison-card[aria-disabled="true"] {
@@ -137,8 +143,9 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--app-space-1);
+  min-width: 0;
   padding: 14px;
-  transition: transform 170ms ease;
+  transition: transform 210ms ease;
 }
 
 .comparison-card--revealed .comparison-card__content {
@@ -166,7 +173,7 @@ textarea {
   display: flex;
   justify-content: center;
   opacity: 0;
-  transition: opacity 120ms ease, transform 170ms ease;
+  transition: opacity 160ms ease, transform 210ms ease;
   transform: translateX(8px);
 }
 
@@ -186,6 +193,7 @@ textarea {
   font-weight: 700;
   height: 42px;
   justify-content: center;
+  line-height: 1;
   width: 42px;
 }
 
@@ -239,37 +247,37 @@ textarea {
   inset: 0;
   position: absolute;
   background:
-    radial-gradient(circle at 20% 20%, rgba(2, 132, 199, 0.14), transparent 40%),
-    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.12), transparent 36%),
-    radial-gradient(circle at 55% 85%, rgba(59, 130, 246, 0.11), transparent 34%),
-    linear-gradient(180deg, rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.5));
+    radial-gradient(circle at 20% 20%, rgba(2, 132, 199, 0.09), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.08), transparent 36%),
+    radial-gradient(circle at 55% 85%, rgba(59, 130, 246, 0.07), transparent 34%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.82), rgba(2, 6, 23, 0.62));
 }
 
 .particle-background__particle {
-  animation: particle-rise 15s linear infinite;
+  animation: particle-rise 22s linear infinite;
   background: radial-gradient(circle, rgba(148, 163, 184, 0.7), rgba(148, 163, 184, 0));
   border-radius: 999px;
   bottom: -10vh;
   filter: blur(0.35px);
   height: 11px;
-  opacity: 0.16;
+  opacity: 0.1;
   position: absolute;
   width: 11px;
 }
 
 .particle-background__particle:nth-of-type(2n) {
   height: 7px;
-  opacity: 0.14;
+  opacity: 0.09;
   width: 7px;
 }
 
 .particle-background__particle:nth-of-type(3n) {
-  animation-duration: 18s;
-  opacity: 0.2;
+  animation-duration: 26s;
+  opacity: 0.12;
 }
 
 .particle-background__particle:nth-of-type(4n) {
-  animation-duration: 12s;
+  animation-duration: 18s;
 }
 
 .particle-background__particle:nth-of-type(1) { left: 4%; animation-delay: -2s; }
@@ -309,7 +317,102 @@ textarea {
 
   100% {
     opacity: 0;
-    transform: translateY(-112vh) translateX(12px) scale(1.2);
+    transform: translateY(-112vh) translateX(8px) scale(1.12);
+  }
+}
+
+.judgement-stage {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  min-height: min(66vh, 520px);
+  justify-content: center;
+  width: 100%;
+}
+
+.judgement-stage__panel {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.84);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 16px;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  justify-content: center;
+  min-height: 210px;
+  padding: var(--app-space-3);
+  text-align: center;
+  width: min(100%, 560px);
+}
+
+.judgement-stage__copy,
+.judgement-stage__status,
+.judgement-stage__error {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.judgement-stage__status {
+  color: var(--app-muted);
+}
+
+.judgement-stage__error {
+  color: #fca5a5;
+}
+
+.judgement-stage__actions {
+  width: min(100%, 560px);
+}
+
+.judgement-stage__button {
+  border-radius: 12px;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 10px 16px;
+  width: 100%;
+}
+
+.judgement-stage__button--primary {
+  background: linear-gradient(140deg, #0f766e, #059669);
+  border: 1px solid rgba(45, 212, 191, 0.42);
+  color: #ecfeff;
+}
+
+.judgement-stage__button--secondary {
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.52);
+  color: #fecaca;
+}
+
+.judgement-stage__spinner {
+  animation: judgement-spin 1.3s linear infinite;
+  border: 4px solid rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  border-top-color: #67e8f9;
+  height: 40px;
+  width: 40px;
+}
+
+@keyframes judgement-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-main {
+    padding: 12px;
+  }
+
+  .app-main section {
+    padding: 10px;
+  }
+
+  .comparison-card {
+    grid-template-columns: 1fr 52px;
   }
 }
 
@@ -330,12 +433,15 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .particle-background__particle {
-    animation-duration: 28s;
+    animation: none;
+    opacity: 0.04;
   }
 
   .comparison-card,
   .comparison-card__content,
-  .comparison-card__action-zone {
+  .comparison-card__action-zone,
+  .judgement-stage__spinner {
     transition: none;
+    animation: none;
   }
 }
