@@ -87,7 +87,7 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
   await page.getByRole("button", { name: "choose-left-track" }).click();
 
   await expect(page.getByText("Round 2 of 5")).toBeVisible();
-  await expect(page.getByLabel("comparison-complete-state")).toContainText("Comparison complete: false");
+  await expect(page.getByRole("button", { name: "trigger-final-judgement" })).not.toBeVisible();
   await expectNoHorizontalScroll(page);
 
   for (let round = 2; round <= 5; round += 1) {
@@ -96,12 +96,11 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
 
     if (round < 5) {
       await expect(page.getByText(`Round ${round + 1} of 5`)).toBeVisible();
-      await expect(page.getByLabel("comparison-complete-state")).toContainText("Comparison complete: false");
+      await expect(page.getByRole("button", { name: "trigger-final-judgement" })).not.toBeVisible();
     }
   }
 
-  await expect(page.getByLabel("comparison-complete-state")).toContainText("Comparison complete: true");
-  await expect(page.getByRole("button", { name: "trigger-final-judgement" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "trigger-final-judgement" })).toBeVisible();
   await page.getByRole("button", { name: "trigger-final-judgement" }).click();
 
   await expect(page.getByLabel("judgement-stage")).toBeVisible();

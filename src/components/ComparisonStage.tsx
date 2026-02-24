@@ -24,7 +24,6 @@ type ComparisonStageProps = {
   showRetryState: boolean;
   canSelectRound: boolean;
   onSelectTrack: (side: ComparisonSide) => void;
-  onEmbedError: (side: ComparisonSide) => void;
   onRetryPair: () => void;
   onRetryComparisonSearch: () => void;
   onTouchStart: (event: TouchEvent<HTMLElement>) => void;
@@ -42,7 +41,6 @@ export function ComparisonStage({
   showRetryState,
   canSelectRound,
   onSelectTrack,
-  onEmbedError,
   onRetryPair,
   onRetryComparisonSearch,
   onTouchStart,
@@ -180,18 +178,6 @@ export function ComparisonStage({
                       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                       loading="lazy"
                     />
-                    <button
-                      type="button"
-                      aria-label={`report-${side}-embed-unavailable`}
-                      disabled={comparisonComplete}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEmbedError(side);
-                      }}
-                      className="comparison-card__report"
-                    >
-                      This embed is unavailable
-                    </button>
                   </>
                 ) : (
                   <div className="comparison-card__placeholder">
@@ -235,18 +221,18 @@ export function ComparisonStage({
           </button>
         </div>
       ) : null}
-      <p aria-label="comparison-complete-state" className="comparison-stage__complete">
-        Comparison complete: {comparisonComplete ? "true" : "false"}
-      </p>
-      <button
-        type="button"
-        aria-label="trigger-final-judgement"
-        disabled={!comparisonComplete}
-        onClick={onTriggerFinalJudgement}
-        className="comparison-stage__final-action"
-      >
-        Generate final judgement
-      </button>
+      {comparisonComplete ? (
+        <div className="comparison-stage__final-action-wrap">
+          <button
+            type="button"
+            aria-label="trigger-final-judgement"
+            onClick={onTriggerFinalJudgement}
+            className="comparison-stage__final-action"
+          >
+            Generate final judgement
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

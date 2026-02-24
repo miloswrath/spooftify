@@ -75,8 +75,10 @@ const startComparisonFromChat = async (
     await waitFor(() => {
       expect(screen.queryByText("Loading comparison tracks...")).toBeNull();
     });
-    await screen.findByRole("button", { name: "report-left-embed-unavailable" });
-    await screen.findByRole("button", { name: "report-right-embed-unavailable" });
+    await waitFor(() => {
+      expect(screen.getByLabelText("left-track-option").getAttribute("aria-disabled")).toBe("false");
+      expect(screen.getByLabelText("right-track-option").getAttribute("aria-disabled")).toBe("false");
+    });
   }
 };
 
@@ -255,30 +257,24 @@ describe("App", () => {
 
     await startComparisonFromChat(user);
 
-    const finalJudgementTrigger = screen.getByRole("button", {
+    expect(screen.queryByRole("button", {
       name: "trigger-final-judgement"
-    });
-
-    expect((finalJudgementTrigger as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
-      "Comparison complete: false"
-    );
+    })).toBeNull();
 
     for (let completedRounds = 1; completedRounds < COMPARISON_TOTAL_ROUNDS; completedRounds += 1) {
       await user.click(screen.getByLabelText("left-track-option"));
     }
 
     expect(screen.getByText(`Round ${COMPARISON_TOTAL_ROUNDS} of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
-    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
-      "Comparison complete: false"
-    );
-    expect((finalJudgementTrigger as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", {
+      name: "trigger-final-judgement"
+    })).toBeNull();
 
     await user.click(screen.getByLabelText("left-track-option"));
 
-    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
-      "Comparison complete: true"
-    );
+    const finalJudgementTrigger = screen.getByRole("button", {
+      name: "trigger-final-judgement"
+    });
     expect((finalJudgementTrigger as HTMLButtonElement).disabled).toBe(false);
 
     const storedSession = JSON.parse(
@@ -308,9 +304,7 @@ describe("App", () => {
     expect(screen.getByLabelText("comparison-stage")).toBeTruthy();
     expect(screen.queryByText(/spotify seed:/i)).toBeNull();
     expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
-    expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
-      "Comparison complete: false"
-    );
+    expect(screen.queryByRole("button", { name: "trigger-final-judgement" })).toBeNull();
 
     const storedSession = JSON.parse(
       window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
@@ -324,6 +318,7 @@ describe("App", () => {
   it("retries by re-fetching candidates while preserving already saved choices", async () => {
     const user = userEvent.setup();
     let comparisonRequests = 0;
+    let failEmbeds = false;
 
     mockFetch.mockImplementation(async (input) => {
       const requestUrl = String(input);
@@ -345,6 +340,13 @@ describe("App", () => {
       }
 
       if (requestUrl.startsWith("https://open.spotify.com/oembed")) {
+        if (failEmbeds) {
+          return {
+            ok: false,
+            json: async () => ({})
+          };
+        }
+
         return {
           ok: true,
           json: async () => ({
@@ -363,13 +365,12 @@ describe("App", () => {
 
     await startComparisonFromChat(user);
 
+    failEmbeds = true;
     await user.click(screen.getByLabelText("left-track-option"));
 
     expect(screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "report-left-embed-unavailable" }));
-
-    expect(screen.getByLabelText("embed-retry-state")).toBeTruthy();
+    expect(await screen.findByLabelText("embed-retry-state")).toBeTruthy();
 
     let storedSession = JSON.parse(
       window.localStorage.getItem(COMPARISON_SESSION_STORAGE_KEY) ?? "{}"
@@ -381,6 +382,7 @@ describe("App", () => {
       chosenTrackId: ROUND_1_LEFT_TRACK_ID
     });
 
+    failEmbeds = false;
     await user.click(screen.getByRole("button", { name: "retry-comparison-pair" }));
 
     expect(await screen.findByText("retry Option 5")).toBeTruthy();

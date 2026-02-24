@@ -611,13 +611,6 @@ export function App() {
     setEmbedFailures({ left: false, right: false });
   };
 
-  const handleEmbedError = (side: ComparisonSide) => {
-    setEmbedFailures((previousFailures) => ({
-      ...previousFailures,
-      [side]: true
-    }));
-  };
-
   const handleRetryPair = () => {
     setPairRetryAttempt((previousAttempt) => previousAttempt + 1);
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
@@ -721,7 +714,6 @@ export function App() {
             showRetryState={showRetryState}
             canSelectRound={canSelectRound}
             onSelectTrack={handleSelectTrack}
-            onEmbedError={handleEmbedError}
             onRetryPair={handleRetryPair}
             onRetryComparisonSearch={handleRetryComparisonSearch}
             onTouchStart={handleComparisonTouchStart}

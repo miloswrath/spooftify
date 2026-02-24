@@ -60,7 +60,7 @@ export function ChatInterface({
       aria-label="chat-interface"
       style={{
         width: "100%",
-        maxWidth: "100%",
+        maxWidth: "1200px",
         height: "calc(100dvh - 180px)",
         minHeight: "min(420px, calc(100dvh - 180px))",
         maxHeight: "760px",
