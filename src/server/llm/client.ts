@@ -1,7 +1,7 @@
 import type { LlmClient } from "../types";
 
 const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completions";
-const LOCAL_QWEN_MODEL_NAME = "qwen5.2";
+const LOCAL_QWEN_MODEL_NAME = "zai-org/glm-4.7-flash";
 const LOCAL_QWEN_TIMEOUT_MS = 4_000;
 
 const QUERY_TEXT_SYSTEM_PROMPT = [
