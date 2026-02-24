@@ -9,6 +9,7 @@ export type Api2Client = {
 export type LlmClient = {
   summarizeVibe: (input: string) => Promise<{ vibe: string }>;
   generateQueryText: (input: string) => Promise<{ queryText: string }>;
+  generateJudgement: (systemPrompt: string, userPrompt: string) => Promise<{ judgement: string }>;
 };
 
 export type SpotifySearchParams = {
