@@ -10,12 +10,13 @@ const GENERATED_QUERY_TEXT = "dreamy indie pop female vocals night drive";
 const buildComparisonSearchPayload = (labelPrefix: string) => ({
   candidates: Array.from({ length: 10 }, (_value, index) => {
     const trackNumber = index + 1;
+    const trackId = `${labelPrefix.toUpperCase()}TRACK${trackNumber}`;
 
     return {
-      id: `${labelPrefix}-track-${trackNumber}`,
+      id: trackId,
       title: `${labelPrefix} Option ${trackNumber}`,
       artistNames: ["Test Artist"],
-      uri: `spotify:track:${labelPrefix}-track-${trackNumber}`
+      uri: `spotify:track:${trackId}`
     };
   }),
   warning: null
@@ -23,10 +24,10 @@ const buildComparisonSearchPayload = (labelPrefix: string) => ({
 
 const PRIMARY_SEARCH_RESPONSE = buildComparisonSearchPayload("primary");
 const RETRY_SEARCH_RESPONSE = buildComparisonSearchPayload("retry");
-const ROUND_1_LEFT_TRACK_ID = "primary-track-1";
-const ROUND_1_RIGHT_TRACK_ID = "primary-track-2";
-const ROUND_5_LEFT_TRACK_ID = "primary-track-9";
-const RETRY_ROUND_2_LEFT_TRACK_ID = "retry-track-5";
+const ROUND_1_LEFT_TRACK_ID = "PRIMARYTRACK1";
+const ROUND_1_RIGHT_TRACK_ID = "PRIMARYTRACK2";
+const ROUND_5_LEFT_TRACK_ID = "PRIMARYTRACK9";
+const RETRY_ROUND_2_LEFT_TRACK_ID = "RETRYTRACK5";
 const mockFetch = vi.fn();
 const originalFetch = globalThis.fetch;
 
@@ -71,7 +72,11 @@ const startComparisonFromChat = async (
   await user.click(await screen.findByRole("button", { name: "continue-to-comparison" }));
 
   if (waitForPair) {
-    await screen.findByRole("button", { name: "choose-right-track" });
+    await waitFor(() => {
+      expect(screen.queryByText("Loading comparison tracks...")).toBeNull();
+    });
+    await screen.findByRole("button", { name: "report-left-embed-unavailable" });
+    await screen.findByRole("button", { name: "report-right-embed-unavailable" });
   }
 };
 
@@ -134,7 +139,7 @@ describe("App", () => {
     await startComparisonFromChat(user);
 
     expect(screen.getByText(`Round 1 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
-    expect(screen.getByLabelText("query-text-seed").textContent).toContain(GENERATED_QUERY_TEXT);
+    expect(screen.queryByText(/spotify seed:/i)).toBeNull();
     expect(screen.getByLabelText("left-track-option")).toBeTruthy();
     expect(screen.getByLabelText("right-track-option")).toBeTruthy();
 
@@ -177,6 +182,7 @@ describe("App", () => {
 
     await startComparisonFromChat(user);
 
+    await user.hover(screen.getByLabelText("right-track-option"));
     await user.click(screen.getByRole("button", { name: "choose-right-track" }));
 
     expect(screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
@@ -192,6 +198,25 @@ describe("App", () => {
       rightTrackId: ROUND_1_RIGHT_TRACK_ID,
       chosenTrackId: ROUND_1_RIGHT_TRACK_ID
     });
+  });
+
+  it("reveals desktop hover confirm control and confirms selection via circular action", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await startComparisonFromChat(user);
+
+    expect(screen.queryByRole("button", { name: "choose-left-track" })).toBeNull();
+
+    const leftCard = screen.getByLabelText("left-track-option");
+    await user.hover(leftCard);
+
+    const confirmButton = screen.getByRole("button", { name: "choose-left-track" });
+    expect(confirmButton).toBeTruthy();
+
+    await user.click(confirmButton);
+    expect(screen.getByText(`Round 2 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
   });
 
   it("maps swipe-left to left selection using the same persistence path", async () => {
@@ -281,9 +306,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByLabelText("comparison-stage")).toBeTruthy();
-    expect(screen.getByLabelText("query-text-seed").textContent).toContain(
-      GENERATED_QUERY_TEXT
-    );
+    expect(screen.queryByText(/spotify seed:/i)).toBeNull();
     expect(screen.getByText(`Round 3 of ${COMPARISON_TOTAL_ROUNDS}`)).toBeTruthy();
     expect(screen.getByLabelText("comparison-complete-state").textContent).toContain(
       "Comparison complete: false"
