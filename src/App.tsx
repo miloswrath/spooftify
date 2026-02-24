@@ -922,3 +922,65 @@ export function App() {
     </main>
   );
 }
+v>
+          ) : null}
+          <p aria-label="comparison-complete-state" style={{ marginTop: "16px" }}>
+            Comparison complete: {comparisonComplete ? "true" : "false"}
+          </p>
+          <button
+            type="button"
+            aria-label="trigger-final-judgement"
+            disabled={!comparisonComplete}
+            onClick={() => {
+              setJudgement("You've got eclectic taste with a love for introspection—the kind of person who curates playlists like they're building a personality.");
+              setStep("judgement");
+            }}
+          >
+            Generate final judgement
+          </button>
+        </section>
+      ) : step === "judgement" ? (
+        <JudgementDisplay
+          judgement={judgement}
+          isLoading={isLoading}
+          error={error}
+          onRetry={() => {
+            setError("");
+            setIsLoading(true);
+            setTimeout(() => {
+              setIsLoading(false);
+              setJudgement("You've got great taste! Your music choices reveal a deep emotional intelligence.");
+            }, 1500);
+          }}
+          onNewSession={() => {
+            setStep("chat");
+            setJudgement("");
+            setError("");
+            setIsLoading(false);
+          }}
+        />
+      ) : null}
+    </main>
+  );
+}
+>>>>>>> origin/main
+? (
+        <JudgementDisplay
+          judgement={judgement}
+          isLoading={isLoading}
+          error={error}
+          onRetry={() => {
+            setError("");
+            fetchJudgement(vibeContext);
+          }}
+          onNewSession={() => {
+            setStep("chat");
+            setJudgement("");
+            setError("");
+            setIsLoading(false);
+          }}
+        />
+      ) : null}
+    </main>
+  );
+}

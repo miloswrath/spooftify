@@ -4,8 +4,6 @@ const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completio
 const LOCAL_QWEN_MODEL_NAME = "zai-org/glm-4.7-flash";
 // Increase timeout to 45s to accommodate local model inference latency
 const LOCAL_QWEN_TIMEOUT_MS = 45_000;
-// Timeout for judgement generation (same as query text, but could be adjusted)
-const JUDGEMENT_GENERATION_TIMEOUT_MS = 45_000;
 
 const QUERY_TEXT_SYSTEM_PROMPT = [
   "You are a music intelligence engine that converts conversational emotional context into a high-quality Spotify search phrase.",
@@ -40,6 +38,8 @@ type OpenAiCompatibleResponse = {
 };
 
 const normalizeQueryText = (value: string): string => value.trim().replace(/\s+/g, " ");
+
+const normalizeJudgement = (value: string): string => value.trim();
 
 export function createLlmClient(): LlmClient {
   return {
@@ -102,6 +102,75 @@ export function createLlmClient(): LlmClient {
         }
 
         return { queryText };
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          throw new Error("timeout");
+        }
+
+        if (error instanceof TypeError) {
+          throw new Error("network_error");
+        }
+
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
+    async generateJudgement(systemPrompt: string, userPrompt: string) {
+      const trimmedUserPrompt = userPrompt.trim();
+      const trimmedSystemPrompt = systemPrompt.trim();
+
+      if (!trimmedUserPrompt || !trimmedSystemPrompt) {
+        throw new Error("empty_input");
+      }
+
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, LOCAL_QWEN_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(LOCAL_QWEN_CHAT_COMPLETIONS_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: LOCAL_QWEN_MODEL_NAME,
+            temperature: 0.7,
+            max_tokens: 256,
+            messages: [
+              {
+                role: "system",
+                content: trimmedSystemPrompt
+              },
+              {
+                role: "user",
+                content: trimmedUserPrompt
+              }
+            ]
+          }),
+          signal: abortController.signal
+        });
+
+        if (!response.ok) {
+          throw new Error("provider_status_error");
+        }
+
+        const payload = (await response.json()) as OpenAiCompatibleResponse;
+        const content = payload.choices?.[0]?.message?.content;
+
+        if (typeof content !== "string") {
+          throw new Error("invalid_response_body");
+        }
+
+        const judgement = normalizeJudgement(content);
+
+        if (!judgement) {
+          throw new Error("empty_output");
+        }
+
+        return { judgement };
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           throw new Error("timeout");
