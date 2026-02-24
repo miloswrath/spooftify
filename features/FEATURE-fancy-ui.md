@@ -56,10 +56,10 @@
 ---
 
 ***Checkpoint 1: Global Visual Foundation***
-- [ ] Add a global dark-theme shell in `src/App.tsx` and/or shared styling entry so all stages inherit consistent background, spacing, and typography primitives.
-- [ ] Integrate one modern Google Font (performance-conscious loading) and apply it as the app-wide default in the client UI layer.
-- [ ] Implement a reusable animated particle background layer behind foreground content, ensuring pointer events do not block interaction.
-- [ ] A test: add/update unit assertions in `src/App.component.test.tsx` that verify global shell + particle layer render without breaking primary stage containers.
+- [x] Add a global dark-theme shell in `src/App.tsx` and/or shared styling entry so all stages inherit consistent background, spacing, and typography primitives.
+- [x] Integrate one modern Google Font (performance-conscious loading) and apply it as the app-wide default in the client UI layer.
+- [x] Implement a reusable animated particle background layer behind foreground content, ensuring pointer events do not block interaction.
+- [x] A test: add/update unit assertions in `src/App.component.test.tsx` that verify global shell + particle layer render without breaking primary stage containers.
 
 ***Checkpoint 2: Chat Stage Fit and Cleanup***
 - [ ] Refactor `src/components/ChatInterface.tsx` layout sizing to keep the chat panel viewport-safe and scrollable for long conversations.

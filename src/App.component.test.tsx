@@ -118,6 +118,14 @@ describe("App", () => {
     globalThis.fetch = originalFetch;
   });
 
+  it("renders the global shell and particle layer with the primary stage container", () => {
+    render(<App />);
+
+    expect(screen.getByLabelText("app-shell")).toBeTruthy();
+    expect(screen.getByLabelText("particle-background-layer")).toBeTruthy();
+    expect(screen.getByLabelText("chat-stage")).toBeTruthy();
+  });
+
   it("moves from chat stage to comparison round scaffold", async () => {
     const user = userEvent.setup();
 

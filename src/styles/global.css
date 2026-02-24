@@ -1,0 +1,161 @@
+:root {
+  --app-bg: #030712;
+  --app-bg-soft: #111827;
+  --app-fg: #e5e7eb;
+  --app-muted: #9ca3af;
+  --app-border: rgba(156, 163, 175, 0.25);
+  --app-panel: rgba(3, 7, 18, 0.72);
+  --app-shadow: 0 28px 70px rgba(2, 6, 23, 0.55);
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 15% 8%, rgba(30, 64, 175, 0.3), transparent 48%),
+    radial-gradient(circle at 85% 14%, rgba(5, 150, 105, 0.2), transparent 44%),
+    linear-gradient(140deg, var(--app-bg), #020617 58%, #111827);
+  color: var(--app-fg);
+  font-family: var(--font-sans);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100%;
+  position: relative;
+  isolation: isolate;
+}
+
+.app-main {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 560px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding: 16px;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.app-main h1 {
+  font-size: clamp(1.8rem, 6vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 0 0 12px;
+}
+
+.app-main section {
+  backdrop-filter: blur(12px);
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  box-shadow: var(--app-shadow);
+  padding: 14px;
+}
+
+.app-main p {
+  color: var(--app-muted);
+}
+
+.particle-background {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
+}
+
+.particle-background__overlay {
+  inset: 0;
+  position: absolute;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(2, 132, 199, 0.2), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.18), transparent 36%),
+    radial-gradient(circle at 55% 85%, rgba(59, 130, 246, 0.15), transparent 34%);
+}
+
+.particle-background__particle {
+  animation: particle-rise 13s linear infinite;
+  background: radial-gradient(circle, rgba(148, 163, 184, 0.7), rgba(148, 163, 184, 0));
+  border-radius: 999px;
+  bottom: -10vh;
+  filter: blur(0.2px);
+  height: 11px;
+  opacity: 0.22;
+  position: absolute;
+  width: 11px;
+}
+
+.particle-background__particle:nth-of-type(2n) {
+  height: 7px;
+  opacity: 0.18;
+  width: 7px;
+}
+
+.particle-background__particle:nth-of-type(3n) {
+  animation-duration: 17s;
+  opacity: 0.26;
+}
+
+.particle-background__particle:nth-of-type(4n) {
+  animation-duration: 11s;
+}
+
+.particle-background__particle:nth-of-type(1) { left: 4%; animation-delay: -2s; }
+.particle-background__particle:nth-of-type(2) { left: 9%; animation-delay: -6s; }
+.particle-background__particle:nth-of-type(3) { left: 14%; animation-delay: -11s; }
+.particle-background__particle:nth-of-type(4) { left: 19%; animation-delay: -1s; }
+.particle-background__particle:nth-of-type(5) { left: 24%; animation-delay: -8s; }
+.particle-background__particle:nth-of-type(6) { left: 28%; animation-delay: -3s; }
+.particle-background__particle:nth-of-type(7) { left: 33%; animation-delay: -12s; }
+.particle-background__particle:nth-of-type(8) { left: 37%; animation-delay: -5s; }
+.particle-background__particle:nth-of-type(9) { left: 42%; animation-delay: -9s; }
+.particle-background__particle:nth-of-type(10) { left: 46%; animation-delay: -7s; }
+.particle-background__particle:nth-of-type(11) { left: 50%; animation-delay: -4s; }
+.particle-background__particle:nth-of-type(12) { left: 54%; animation-delay: -10s; }
+.particle-background__particle:nth-of-type(13) { left: 58%; animation-delay: -6s; }
+.particle-background__particle:nth-of-type(14) { left: 63%; animation-delay: -13s; }
+.particle-background__particle:nth-of-type(15) { left: 68%; animation-delay: -3s; }
+.particle-background__particle:nth-of-type(16) { left: 72%; animation-delay: -8s; }
+.particle-background__particle:nth-of-type(17) { left: 76%; animation-delay: -12s; }
+.particle-background__particle:nth-of-type(18) { left: 80%; animation-delay: -4s; }
+.particle-background__particle:nth-of-type(19) { left: 84%; animation-delay: -7s; }
+.particle-background__particle:nth-of-type(20) { left: 88%; animation-delay: -1s; }
+.particle-background__particle:nth-of-type(21) { left: 91%; animation-delay: -9s; }
+.particle-background__particle:nth-of-type(22) { left: 94%; animation-delay: -5s; }
+.particle-background__particle:nth-of-type(23) { left: 97%; animation-delay: -11s; }
+.particle-background__particle:nth-of-type(24) { left: 99%; animation-delay: -2s; }
+
+@keyframes particle-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0) scale(0.8);
+  }
+
+  15% {
+    opacity: 0.24;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-112vh) translateX(12px) scale(1.2);
+  }
+}
