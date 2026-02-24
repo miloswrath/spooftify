@@ -62,16 +62,16 @@
 - [x] A test: add/update unit assertions in `src/App.component.test.tsx` that verify global shell + particle layer render without breaking primary stage containers.
 
 ***Checkpoint 2: Chat Stage Fit and Cleanup***
-- [ ] Refactor `src/components/ChatInterface.tsx` layout sizing to keep the chat panel viewport-safe and scrollable for long conversations.
-- [ ] Remove user-visible debug/internal display text from chat-stage-adjacent UI in `src/App.tsx` (including debug seeds and pipeline-ish labels).
-- [ ] Normalize input/action sizing and spacing for mobile-first ergonomics without adding non-MVP controls.
-- [ ] A test: extend `src/components/ChatInterface.component.test.tsx` to confirm scroll behavior and absence of removed debug copy in the rendered chat flow.
+- [x] Refactor `src/components/ChatInterface.tsx` layout sizing to keep the chat panel viewport-safe and scrollable for long conversations.
+- [x] Remove user-visible debug/internal display text from chat-stage-adjacent UI in `src/App.tsx` (including debug seeds and pipeline-ish labels).
+- [x] Normalize input/action sizing and spacing for mobile-first ergonomics without adding non-MVP controls.
+- [x] A test: extend `src/components/ChatInterface.component.test.tsx` to confirm scroll behavior and absence of removed debug copy in the rendered chat flow.
 
 ***Checkpoint 3: Comparison Interaction Redesign (Mobile + Desktop)***
-- [ ] Update `src/components/ComparisonStage.tsx` to make selection feel card-first (not static button-first), with subtle transition states.
-- [ ] Implement mobile swipe selection behavior in comparison stage wiring (`src/App.tsx` + `ComparisonStage` event handling) as a first-class interaction path.
-- [ ] Implement desktop hover behavior where the card shifts and reveals a circular green checkmark confirm affordance; keep keyboard activation viable.
-- [ ] A test: add/adjust `src/App.component.test.tsx` interaction tests for swipe path and desktop reveal/confirm control behavior.
+- [x] Update `src/components/ComparisonStage.tsx` to make selection feel card-first (not static button-first), with subtle transition states.
+- [x] Implement mobile swipe selection behavior in comparison stage wiring (`src/App.tsx` + `ComparisonStage` event handling) as a first-class interaction path.
+- [x] Implement desktop hover behavior where the card shifts and reveals a circular green checkmark confirm affordance; keep keyboard activation viable.
+- [x] A test: add/adjust `src/App.component.test.tsx` interaction tests for swipe path and desktop reveal/confirm control behavior.
 
 ***Checkpoint 4: Motion, Readability, and Responsive Guardrails***
 - [ ] Tune particle/micro-interaction motion timing and contrast so text remains readable over animation across chat, comparison, and judgement stages.

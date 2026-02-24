@@ -6,6 +6,10 @@
   --app-border: rgba(156, 163, 175, 0.25);
   --app-panel: rgba(3, 7, 18, 0.72);
   --app-shadow: 0 28px 70px rgba(2, 6, 23, 0.55);
+  --app-space-1: 8px;
+  --app-space-2: 12px;
+  --app-space-3: 16px;
+  --app-space-4: 20px;
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -29,6 +33,7 @@ body {
     linear-gradient(140deg, var(--app-bg), #020617 58%, #111827);
   color: var(--app-fg);
   font-family: var(--font-sans);
+  overflow-x: clip;
 }
 
 button,
@@ -46,10 +51,10 @@ textarea {
 .app-main {
   box-sizing: border-box;
   margin: 0 auto;
-  max-width: 560px;
+  max-width: 720px;
   min-height: 100vh;
-  overflow-x: hidden;
-  padding: 16px;
+  overflow-x: clip;
+  padding: var(--app-space-3);
   position: relative;
   width: 100%;
   z-index: 1;
@@ -59,7 +64,7 @@ textarea {
   font-size: clamp(1.8rem, 6vw, 2.25rem);
   font-weight: 700;
   letter-spacing: 0.01em;
-  margin: 0 0 12px;
+  margin: 0 0 var(--app-space-2);
 }
 
 .app-main section {
@@ -68,7 +73,8 @@ textarea {
   border: 1px solid var(--app-border);
   border-radius: 18px;
   box-shadow: var(--app-shadow);
-  padding: 14px;
+  padding: var(--app-space-2);
+  width: 100%;
 }
 
 .app-main p {
@@ -78,7 +84,7 @@ textarea {
 .comparison-stage {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--app-space-2);
 }
 
 .comparison-stage__round {
@@ -98,18 +104,18 @@ textarea {
 
 .comparison-stage__cards {
   display: grid;
-  gap: 14px;
+  gap: var(--app-space-2);
   grid-template-columns: 1fr;
 }
 
 .comparison-card {
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(15, 23, 42, 0.74);
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 16px;
   display: grid;
   grid-template-columns: 1fr 56px;
   overflow: hidden;
-  transition: border-color 180ms ease, box-shadow 180ms ease;
+  transition: border-color 140ms ease, box-shadow 170ms ease;
 }
 
 .comparison-card[aria-disabled="true"] {
@@ -130,9 +136,9 @@ textarea {
 .comparison-card__content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--app-space-1);
   padding: 14px;
-  transition: transform 180ms ease;
+  transition: transform 170ms ease;
 }
 
 .comparison-card--revealed .comparison-card__content {
@@ -160,7 +166,7 @@ textarea {
   display: flex;
   justify-content: center;
   opacity: 0;
-  transition: opacity 140ms ease, transform 180ms ease;
+  transition: opacity 120ms ease, transform 170ms ease;
   transform: translateX(8px);
 }
 
@@ -203,7 +209,7 @@ textarea {
   border: 1px solid #f59e0b;
   border-radius: 12px;
   margin-top: 4px;
-  padding: 12px;
+  padding: var(--app-space-2);
 }
 
 .comparison-stage__error p,
@@ -233,36 +239,37 @@ textarea {
   inset: 0;
   position: absolute;
   background:
-    radial-gradient(circle at 20% 20%, rgba(2, 132, 199, 0.2), transparent 40%),
-    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.18), transparent 36%),
-    radial-gradient(circle at 55% 85%, rgba(59, 130, 246, 0.15), transparent 34%);
+    radial-gradient(circle at 20% 20%, rgba(2, 132, 199, 0.14), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.12), transparent 36%),
+    radial-gradient(circle at 55% 85%, rgba(59, 130, 246, 0.11), transparent 34%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.5));
 }
 
 .particle-background__particle {
-  animation: particle-rise 13s linear infinite;
+  animation: particle-rise 15s linear infinite;
   background: radial-gradient(circle, rgba(148, 163, 184, 0.7), rgba(148, 163, 184, 0));
   border-radius: 999px;
   bottom: -10vh;
-  filter: blur(0.2px);
+  filter: blur(0.35px);
   height: 11px;
-  opacity: 0.22;
+  opacity: 0.16;
   position: absolute;
   width: 11px;
 }
 
 .particle-background__particle:nth-of-type(2n) {
   height: 7px;
-  opacity: 0.18;
+  opacity: 0.14;
   width: 7px;
 }
 
 .particle-background__particle:nth-of-type(3n) {
-  animation-duration: 17s;
-  opacity: 0.26;
+  animation-duration: 18s;
+  opacity: 0.2;
 }
 
 .particle-background__particle:nth-of-type(4n) {
-  animation-duration: 11s;
+  animation-duration: 12s;
 }
 
 .particle-background__particle:nth-of-type(1) { left: 4%; animation-delay: -2s; }
@@ -297,11 +304,38 @@ textarea {
   }
 
   15% {
-    opacity: 0.24;
+    opacity: 0.2;
   }
 
   100% {
     opacity: 0;
     transform: translateY(-112vh) translateX(12px) scale(1.2);
+  }
+}
+
+@media (min-width: 768px) {
+  .app-main {
+    padding: var(--app-space-4);
+  }
+
+  .app-main section {
+    border-radius: 20px;
+    padding: var(--app-space-3);
+  }
+
+  .comparison-stage {
+    gap: var(--app-space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particle-background__particle {
+    animation-duration: 28s;
+  }
+
+  .comparison-card,
+  .comparison-card__content,
+  .comparison-card__action-zone {
+    transition: none;
   }
 }

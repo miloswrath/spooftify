@@ -3,13 +3,13 @@ import { expect, test, type Page } from "@playwright/test";
 const buildComparisonSearchPayload = () => ({
   candidates: Array.from({ length: 10 }, (_value, index) => {
     const trackNumber = index + 1;
+    const trackId = `E2ETRACK${trackNumber}`;
 
     return {
-      id: `e2e-track-${trackNumber}`,
+      id: trackId,
       title: `E2E Option ${trackNumber}`,
       artistNames: ["Test Artist"],
-      previewUrl: `https://audio.example/e2e-track-${trackNumber}.mp3`,
-      embedUrl: `https://open.spotify.com/embed/track/e2e-track-${trackNumber}`
+      uri: `spotify:track:${trackId}`
     };
   }),
   warning: null
@@ -50,6 +50,16 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
     });
   });
 
+  await page.route("https://open.spotify.com/oembed*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        iframe_url: "https://open.spotify.com/embed/track/e2e-mock"
+      })
+    });
+  });
+
   await page.goto("/");
 
   await expect(page.getByText("Spooftify")).toBeVisible();
@@ -71,10 +81,12 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
 
   await expect(page.getByLabel("comparison-stage")).toBeVisible();
   await expect(page.getByText("Round 1 of 5")).toBeVisible();
+  await expect(page.getByLabel("swipe-selection-hint")).toBeVisible();
   await expectNoHorizontalScroll(page);
 
   await page.getByRole("button", { name: "choose-left-track" }).click();
 
   await expect(page.getByText("Round 2 of 5")).toBeVisible();
+  await expect(page.getByLabel("comparison-complete-state")).toContainText("Comparison complete: false");
   await expectNoHorizontalScroll(page);
 });
