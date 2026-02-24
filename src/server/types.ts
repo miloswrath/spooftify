@@ -15,14 +15,14 @@ export type SpotifySearchParams = {
   q: string;
   type: "track";
   limit: number;
+  offset: number;
 };
 
 export type ComparisonTrackCandidate = {
   id: string;
   title: string;
   artistNames: string[];
-  previewUrl: string | null;
-  embedUrl: string;
+  uri: string;
 };
 
 export type SpotifyClient = {

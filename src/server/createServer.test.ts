@@ -10,8 +10,7 @@ describe("createServer", () => {
       id: "track-1",
       title: "Strobe Lights",
       artistNames: ["DJ Test"],
-      previewUrl: "https://audio.example/track-1.mp3",
-      embedUrl: "https://open.spotify.com/embed/track/track-1"
+      uri: "spotify:track:track-1"
     }
   ]);
   const summarizeVibe = vi.fn(async () => ({ vibe: "chill" }));
@@ -81,44 +80,41 @@ describe("createServer", () => {
           id: "track-1",
           title: "Strobe Lights",
           artistNames: ["DJ Test"],
-          previewUrl: "https://audio.example/track-1.mp3",
-          embedUrl: "https://open.spotify.com/embed/track/track-1"
+          uri: "spotify:track:track-1"
         }
       ],
       warning: {
-        code: "insufficient_previewable_tracks",
-        message: "Fewer than 10 previewable tracks were returned. Retry to fetch another set."
+        code: "insufficient_comparison_candidates",
+        message: "Fewer than 10 comparison candidates were returned. Retry to fetch another set."
       }
     });
     expect(searchTracks).toHaveBeenCalledWith({
       q: "dark synth",
       type: "track",
-      limit: 25
+      limit: 10,
+      offset: 0
     });
   });
 
-  it("filters out non-previewable or invalid candidates", async () => {
+  it("filters out invalid comparison candidates", async () => {
     searchTracks.mockResolvedValueOnce([
       {
         id: "valid-1",
         title: "Valid",
         artistNames: ["A"],
-        previewUrl: "https://audio.example/valid-1.mp3",
-        embedUrl: "https://open.spotify.com/embed/track/valid-1"
+        uri: "spotify:track:valid-1"
       },
       {
-        id: "no-preview",
-        title: "No Preview",
+        id: "no-uri",
+        title: "No Uri",
         artistNames: ["B"],
-        previewUrl: null,
-        embedUrl: "https://open.spotify.com/embed/track/no-preview"
+        uri: ""
       },
       {
         id: "",
         title: "Bad Id",
         artistNames: ["C"],
-        previewUrl: "https://audio.example/bad.mp3",
-        embedUrl: "https://open.spotify.com/embed/track/bad"
+        uri: "spotify:track:bad"
       }
     ]);
 
@@ -130,17 +126,16 @@ describe("createServer", () => {
         id: "valid-1",
         title: "Valid",
         artistNames: ["A"],
-        previewUrl: "https://audio.example/valid-1.mp3",
-        embedUrl: "https://open.spotify.com/embed/track/valid-1"
+        uri: "spotify:track:valid-1"
       }
     ]);
     expect(response.body.warning).toEqual({
-      code: "insufficient_previewable_tracks",
-      message: "Fewer than 10 previewable tracks were returned. Retry to fetch another set."
+      code: "insufficient_comparison_candidates",
+      message: "Fewer than 10 comparison candidates were returned. Retry to fetch another set."
     });
   });
 
-  it("returns exactly 10 candidates when more than 10 previewable tracks are available", async () => {
+  it("returns exactly 10 candidates when more than 10 valid tracks are available", async () => {
     const manyCandidates = Array.from({ length: 12 }, (_value, index) => {
       const trackNumber = index + 1;
 
@@ -148,8 +143,7 @@ describe("createServer", () => {
         id: `track-${trackNumber}`,
         title: `Track ${trackNumber}`,
         artistNames: ["DJ Test"],
-        previewUrl: `https://audio.example/track-${trackNumber}.mp3`,
-        embedUrl: `https://open.spotify.com/embed/track/track-${trackNumber}`
+        uri: `spotify:track:track-${trackNumber}`
       };
     });
 
@@ -162,6 +156,50 @@ describe("createServer", () => {
     expect(response.body.candidates[0]?.id).toBe("track-1");
     expect(response.body.candidates[9]?.id).toBe("track-10");
     expect(response.body.warning).toBeNull();
+  });
+
+  it("paginates spotify search with offset until 10 candidates are collected", async () => {
+    const firstPage = Array.from({ length: 6 }, (_value, index) => {
+      const trackNumber = index + 1;
+
+      return {
+        id: `track-${trackNumber}`,
+        title: `Track ${trackNumber}`,
+        artistNames: ["DJ Test"],
+        uri: `spotify:track:track-${trackNumber}`
+      };
+    });
+    const secondPage = Array.from({ length: 6 }, (_value, index) => {
+      const trackNumber = index + 7;
+
+      return {
+        id: `track-${trackNumber}`,
+        title: `Track ${trackNumber}`,
+        artistNames: ["DJ Test"],
+        uri: `spotify:track:track-${trackNumber}`
+      };
+    });
+
+    searchTracks
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage);
+
+    const response = await request(server).get("/api/comparison/search?q=house");
+
+    expect(response.status).toBe(200);
+    expect(response.body.candidates).toHaveLength(10);
+    expect(searchTracks).toHaveBeenNthCalledWith(1, {
+      q: "house",
+      type: "track",
+      limit: 10,
+      offset: 0
+    });
+    expect(searchTracks).toHaveBeenNthCalledWith(2, {
+      q: "house",
+      type: "track",
+      limit: 10,
+      offset: 10
+    });
   });
 
   it("rejects comparison search when query text is empty after sanitization", async () => {

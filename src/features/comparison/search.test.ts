@@ -57,8 +57,7 @@ describe("comparison search client", () => {
             id: "track-1",
             title: "Track 1",
             artistNames: ["Artist"],
-            previewUrl: "https://audio.example/track-1.mp3",
-            embedUrl: "https://open.spotify.com/embed/track/track-1"
+            uri: "spotify:track:track-1"
           }
         ],
         warning: null

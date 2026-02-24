@@ -2,10 +2,11 @@ import { useEffect, useState, type TouchEvent } from "react";
 import { ChatInterface, type ChatMessage } from "./components/ChatInterface";
 import { JudgementDisplay } from "./components/JudgementDisplay";
 import {
-  ComparisonSearchError,
   COMPARISON_TOTAL_ROUNDS,
+  ComparisonSearchError,
   fetchComparisonCandidates,
   loadComparisonSession,
+  resolveSpotifyEmbedUrl,
   saveRoundChoice,
   startNewComparisonSession,
   type ComparisonRoundIndex,
@@ -17,7 +18,7 @@ import { getGlobalQueryText, setGlobalQueryText } from "./lib/queryText";
 interface TrackOption {
   id: string;
   title: string;
-  embedUrl: string;
+  uri: string;
 }
 
 interface ComparisonPair {
@@ -31,22 +32,22 @@ const FALLBACK_COMPARISON_CANDIDATES: TrackOption[] = [
   {
     id: "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
     title: "Option A",
-    embedUrl: "https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC"
+    uri: "spotify:track:4uLU6hMCjMI75M1A2tKUQC"
   },
   {
     id: "spotify:track:1301WleyT98MSxVHPZCA6M",
     title: "Option B",
-    embedUrl: "https://open.spotify.com/embed/track/1301WleyT98MSxVHPZCA6M"
+    uri: "spotify:track:1301WleyT98MSxVHPZCA6M"
   },
   {
     id: "spotify:track:5ChkMS8OtdzJeqyybCc9R5",
     title: "Option C",
-    embedUrl: "https://open.spotify.com/embed/track/5ChkMS8OtdzJeqyybCc9R5"
+    uri: "spotify:track:5ChkMS8OtdzJeqyybCc9R5"
   },
   {
     id: "spotify:track:3AJwUDP919kvQ9QcozQPxg",
     title: "Option D",
-    embedUrl: "https://open.spotify.com/embed/track/3AJwUDP919kvQ9QcozQPxg"
+    uri: "spotify:track:3AJwUDP919kvQ9QcozQPxg"
   }
 ];
 
@@ -220,7 +221,7 @@ const mapTrackCandidateToTrackOption = (
 ): TrackOption => ({
   id: candidate.id,
   title: candidate.title,
-  embedUrl: candidate.embedUrl
+  uri: candidate.uri
 });
 
 const getComparisonErrorMessage = (error: unknown): string => {
@@ -330,6 +331,10 @@ export function App() {
     left: false,
     right: false
   });
+  const [embedUrls, setEmbedUrls] = useState<Record<ComparisonSide, string | null>>({
+    left: null,
+    right: null
+  });
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const userMessageCount = chatMessages.filter((message) => message.role === "user").length;
   const canContinueToComparison = userMessageCount >= MIN_USER_MESSAGES_FOR_QUERY;
@@ -417,6 +422,55 @@ export function App() {
     };
   }, [step, comparisonFetchVersion]);
 
+  useEffect(() => {
+    if (step !== "compare") {
+      return;
+    }
+
+    const leftUri = comparisonPair?.left.uri;
+    const rightUri = comparisonPair?.right.uri;
+
+    if (!leftUri || !rightUri) {
+      setEmbedUrls({ left: null, right: null });
+      return;
+    }
+
+    let isCancelled = false;
+
+    setEmbedUrls({ left: null, right: null });
+
+    const resolveEmbedForSide = async (side: ComparisonSide, uri: string) => {
+      try {
+        const embedUrl = await resolveSpotifyEmbedUrl(uri);
+
+        if (isCancelled) {
+          return;
+        }
+
+        setEmbedUrls((previousUrls) => ({
+          ...previousUrls,
+          [side]: embedUrl
+        }));
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+
+        setEmbedFailures((previousFailures) => ({
+          ...previousFailures,
+          [side]: true
+        }));
+      }
+    };
+
+    void resolveEmbedForSide("left", leftUri);
+    void resolveEmbedForSide("right", rightUri);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [step, comparisonPair?.left.uri, comparisonPair?.right.uri]);
+
   const generateQueryText = async (queryInput: string): Promise<string> => {
     const response = await fetch("/api/llm/route", {
       method: "POST",
@@ -455,6 +509,7 @@ export function App() {
     setPairRetryAttempt(0);
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
     setEmbedFailures({ left: false, right: false });
+    setEmbedUrls({ left: null, right: null });
     setComparisonErrorMessage("");
     setStep("compare");
   };
@@ -535,9 +590,9 @@ export function App() {
       comparisonComplete ||
       hasEmbedFailure ||
       !left?.id ||
-      !left.embedUrl ||
+      !left.uri ||
       !right?.id ||
-      !right.embedUrl
+      !right.uri
     ) {
       return;
     }
@@ -568,6 +623,7 @@ export function App() {
     setPairRetryAttempt((previousAttempt) => previousAttempt + 1);
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
     setEmbedFailures({ left: false, right: false });
+    setEmbedUrls({ left: null, right: null });
     setComparisonErrorMessage("");
   };
 
@@ -604,9 +660,11 @@ export function App() {
 
   const hasValidPairData = Boolean(
     comparisonPair?.left.id &&
-    comparisonPair.left.embedUrl &&
+    comparisonPair.left.uri &&
+    embedUrls.left &&
     comparisonPair?.right.id &&
-    comparisonPair.right.embedUrl
+    comparisonPair.right.uri &&
+    embedUrls.right
   );
   const hasEmbedFailure = embedFailures.left || embedFailures.right;
   const showRetryState =
@@ -704,7 +762,8 @@ export function App() {
             >
               {(["left", "right"] as const).map((side) => {
                 const option = side === "left" ? comparisonPair?.left : comparisonPair?.right;
-                const hasValidTrackData = Boolean(option?.id && option.embedUrl);
+                const optionEmbedUrl = side === "left" ? embedUrls.left : embedUrls.right;
+                const hasValidTrackData = Boolean(option?.id && option.uri && optionEmbedUrl);
                 const canSelect = hasValidTrackData && canSelectRound;
 
                 return (
@@ -745,7 +804,7 @@ export function App() {
                       <>
                         <iframe
                           title={`${side}-spotify-embed`}
-                          src={option?.embedUrl ?? ""}
+                          src={optionEmbedUrl ?? ""}
                           width="100%"
                           height="232"
                           style={{ border: "none", borderRadius: "12px" }}

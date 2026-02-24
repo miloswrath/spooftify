@@ -62,7 +62,7 @@ describe("createSpotifyClient", () => {
                 id: "track-1",
                 name: "Track One",
                 artists: [{ name: "Artist One" }],
-                preview_url: "https://audio.example/track-1.mp3"
+                uri: "spotify:track:track-1"
               }
             ]
           }
@@ -72,7 +72,7 @@ describe("createSpotifyClient", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const client = createSpotifyClient();
-    const tracks = await client.searchTracks({ q: "lofi", type: "track", limit: 5 });
+    const tracks = await client.searchTracks({ q: "lofi", type: "track", limit: 5, offset: 10 });
 
     const encodedCredentials = Buffer.from("client-id:client-secret").toString("base64");
 
@@ -89,7 +89,7 @@ describe("createSpotifyClient", () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      `${SPOTIFY_SEARCH_ENDPOINT}?q=lofi&type=track&limit=5`,
+      `${SPOTIFY_SEARCH_ENDPOINT}?q=lofi&type=track&limit=5&offset=10`,
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: "Bearer token-123" })
       })
@@ -100,8 +100,7 @@ describe("createSpotifyClient", () => {
         id: "track-1",
         title: "Track One",
         artistNames: ["Artist One"],
-        previewUrl: "https://audio.example/track-1.mp3",
-        embedUrl: "https://open.spotify.com/embed/track/track-1"
+        uri: "spotify:track:track-1"
       }
     ]);
   });

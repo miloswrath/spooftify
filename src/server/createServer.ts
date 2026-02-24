@@ -11,8 +11,9 @@ import type {
 } from "./types";
 
 const SPOTIFY_SEARCH_TYPE = "track" as const;
-const SPOTIFY_SEARCH_LIMIT = 25;
+const SPOTIFY_SEARCH_LIMIT = 10;
 const MAX_COMPARISON_CANDIDATES = 10;
+const MAX_SPOTIFY_SEARCH_OFFSET = 90;
 
 type ServerDeps = {
   api1Client: Api1Client;
@@ -25,14 +26,15 @@ const isNonEmptyString = (value: unknown): value is string => {
   return typeof value === "string" && value.trim().length > 0;
 };
 
-const isPreviewableComparisonCandidate = (
+const isValidComparisonCandidate = (
   candidate: ComparisonTrackCandidate
 ): boolean => {
   return (
     isNonEmptyString(candidate.id) &&
     isNonEmptyString(candidate.title) &&
-    isNonEmptyString(candidate.embedUrl) &&
-    isNonEmptyString(candidate.previewUrl)
+    isNonEmptyString(candidate.uri) &&
+    Array.isArray(candidate.artistNames) &&
+    candidate.artistNames.every((artistName) => isNonEmptyString(artistName))
   );
 };
 
@@ -122,24 +124,49 @@ export function createServer(deps: ServerDeps) {
     }
 
     try {
-      const candidates = await deps.spotifyClient.searchTracks({
-        q: queryText,
-        type: SPOTIFY_SEARCH_TYPE,
-        limit: SPOTIFY_SEARCH_LIMIT
-      });
+      const uniqueCandidatesById = new Map<string, ComparisonTrackCandidate>();
 
-      const previewableCandidates = candidates.filter((candidate) =>
-        isPreviewableComparisonCandidate(candidate)
-      );
-      const limitedCandidates = previewableCandidates.slice(
+      for (
+        let offset = 0;
+        offset <= MAX_SPOTIFY_SEARCH_OFFSET &&
+        uniqueCandidatesById.size < MAX_COMPARISON_CANDIDATES;
+        offset += SPOTIFY_SEARCH_LIMIT
+      ) {
+        const pageCandidates = await deps.spotifyClient.searchTracks({
+          q: queryText,
+          type: SPOTIFY_SEARCH_TYPE,
+          limit: SPOTIFY_SEARCH_LIMIT,
+          offset
+        });
+
+        for (const candidate of pageCandidates) {
+          if (!isValidComparisonCandidate(candidate)) {
+            continue;
+          }
+
+          if (!uniqueCandidatesById.has(candidate.id)) {
+            uniqueCandidatesById.set(candidate.id, candidate);
+          }
+
+          if (uniqueCandidatesById.size >= MAX_COMPARISON_CANDIDATES) {
+            break;
+          }
+        }
+
+        if (pageCandidates.length < SPOTIFY_SEARCH_LIMIT) {
+          break;
+        }
+      }
+
+      const limitedCandidates = Array.from(uniqueCandidatesById.values()).slice(
         0,
         MAX_COMPARISON_CANDIDATES
       );
       const warning =
         limitedCandidates.length < MAX_COMPARISON_CANDIDATES
           ? {
-            code: "insufficient_previewable_tracks",
-            message: "Fewer than 10 previewable tracks were returned. Retry to fetch another set."
+            code: "insufficient_comparison_candidates",
+            message: "Fewer than 10 comparison candidates were returned. Retry to fetch another set."
           }
           : null;
 
