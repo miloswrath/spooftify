@@ -8,6 +8,8 @@ import {
   loadComparisonSession,
   resolveSpotifyEmbedUrl,
   saveRoundChoice,
+  updateComparisonSession,
+  resetComparisonSession,
   startNewComparisonSession,
   type ComparisonRoundIndex,
   type ComparisonSessionState,
@@ -346,6 +348,12 @@ export function App() {
       return;
     }
 
+    if (session.judgement) {
+      setJudgement(session.judgement);
+      setStep("judgement");
+      return;
+    }
+
     const progress = getProgressFromSession(session);
     setCurrentRound(progress.currentRound);
     setComparisonComplete(progress.comparisonComplete);
@@ -353,6 +361,102 @@ export function App() {
     setGlobalQueryText(session.queryText ?? "");
     setStep("compare");
   }, []);
+
+  const extractVibeCategories = (messages: ChatMessage[]): string[] => {
+    const text = messages.map((m) => m.content).join(" ").toLowerCase();
+    const categories = new Set<string>();
+
+    if (/\b(hype|high energy|energy|party|wild|rage|fast|hard|loud)\b/.test(text)) {
+      categories.add("high energy");
+    }
+
+    if (/\b(chill|calm|soft|lofi|study|sleep|focus|cozy|relax)\b/.test(text)) {
+      categories.add("low energy");
+    }
+
+    if (/\b(introspect|introspective|sad|melanch|emo)\b/.test(text)) {
+      categories.add("introspective");
+    }
+
+    if (/\b(experiment|weird|avant|experimental)\b/.test(text)) {
+      categories.add("experimental");
+    }
+
+    if (/\b(throwback|nostalg|retro)\b/.test(text)) {
+      categories.add("nostalgic");
+    }
+
+    return Array.from(categories);
+  };
+
+  const requestJudgement = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const session = loadComparisonSession();
+      const comparisonChoices = session?.choices ?? [];
+      const vibeCategories = extractVibeCategories(chatMessages);
+
+      const response = await fetch("/api/judgement/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatMessages, comparisonChoices, vibeCategories })
+      });
+
+      if (!response.ok) {
+        // Try to parse a useful error body from the server
+        let body: Record<string, unknown> | null = null;
+
+        try {
+          body = (await response.json()) as Record<string, unknown>;
+        } catch {
+          body = null;
+        }
+
+        if (body?.code === "blocked_input") {
+          setError("Content blocked by policy — cannot generate judgement.");
+          setIsLoading(false);
+          return;
+        }
+
+        setError((body && typeof body.message === "string") ? body.message : "Could not generate judgement. Please retry.");
+        setIsLoading(false);
+        return;
+      }
+
+      const payload = (await response.json()) as { judgement?: unknown };
+
+      if (typeof payload.judgement !== "string" || !payload.judgement.trim()) {
+        throw new Error("invalid_judgement_response");
+      }
+
+      const final = payload.judgement.trim();
+      setJudgement(final);
+      updateComparisonSession({ judgement: final, judgementGeneratedAt: Date.now() });
+      setIsLoading(false);
+      setStep("judgement");
+    } catch (err) {
+      setError("Could not generate judgement. Please retry.");
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!comparisonComplete || step !== "compare") {
+      return;
+    }
+
+    const session = loadComparisonSession();
+
+    if (session?.judgement) {
+      setJudgement(session.judgement);
+      setStep("judgement");
+      return;
+    }
+
+    void requestJudgement();
+  }, [comparisonComplete, step]);
 
   useEffect(() => {
     if (step !== "compare") {
@@ -905,17 +1009,17 @@ export function App() {
           error={error}
           onRetry={() => {
             setError("");
-            setIsLoading(true);
-            setTimeout(() => {
-              setIsLoading(false);
-              setJudgement("You've got great taste! Your music choices reveal a deep emotional intelligence.");
-            }, 1500);
+            void requestJudgement();
           }}
           onNewSession={() => {
+            resetComparisonSession();
             setStep("chat");
             setJudgement("");
             setError("");
             setIsLoading(false);
+            setActiveQueryText(null);
+            setGlobalQueryText("");
+            setComparisonCandidates(FALLBACK_COMPARISON_CANDIDATES);
           }}
         />
       ) : null}

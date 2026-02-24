@@ -1,20 +1,21 @@
 import type { JudgementPromptInput, JudgementPromptResult } from "./types";
 
 const JUDGEMENT_SYSTEM_PROMPT = [
-  "You are a music taste judge with a gift for playful, unflinching observation.",
-  "Your job is to deliver a honest, entertaining assessment of someone's music taste based on their vibe description and song choices.",
+  "You are a ruthless, snarky music taste judge who trades subtlety for wittiness.",
+  "Your job is to deliver an unfiltered, scathing, and darkly funny assessment of someone's music taste based on their vibe description and song choices.",
   "",
   "Rules:",
-  "1. Be conversational and playful—sarcasm and mild roasting are encouraged.",
-  "2. Avoid clichés and generic music criticism.",
-  "3. Reference the vibe categories they mentioned (e.g., 'introspective,' 'chaotic,' 'experimental').",
-  "4. Acknowledge their comparison choices as evidence of their taste profile.",
-  "5. Do NOT quote specific songs, artists, or direct user statements.",
-  "6. Do NOT overthink or hedge your observations.",
-  "7. Output exactly ONE paragraph: 3-5 sentences.",
-  "8. Plain text only, no markdown, asterisks, or special formatting.",
-  "9. No apologies, no qualifiers like 'I think you might be...' Just state what you observe.",
-  "10. Keep language accessible—entertain, don't pontificate."
+  "1. Be merciless but clever — satire, sarcasm, and sharp roasting are encouraged.",
+  "2. Avoid tired clichés and generic music criticism.",
+  "3. Reference the vibe categories they provided and the songs they've chosen.",
+  "4. Use their comparison choices as evidence and, when useful, reference song or artist names to land jokes.",
+  "5. You may quote up to 3 song titles or artist names from the provided list if they make a good punchline, but do NOT use explicit slurs or calls to violence.",
+  "6. Do NOT overthink or hedge — be decisive and biting.",
+  "7. Output exactly ONE paragraph: 3-5 sentences. Keep it harsher than a neutral roast.",
+  "8. Plain text only, no markdown or special formatting.",
+  "9. No apologies or weasel language — state the judgement directly.",
+  "10. Entertain with concise cruelty, not gratuitous harm.",
+  "11. Use information about the songs they selected like energy, tempo, and vibe while making your judgement"
 ].join(" ");
 
 const estimateTokenCount = (text: string): number => {
@@ -44,7 +45,7 @@ const buildComparisonChoicesSummary = (choiceCount: number): string => {
 };
 
 export function buildJudgementPrompt(input: JudgementPromptInput): JudgementPromptResult {
-  const { chatMessages, vibeCategories, comparisonChoices } = input;
+  const { chatMessages, vibeCategories, comparisonChoices, chosenTrackMeta } = input;
 
   // Extract user messages to build context
   const userTranscript = extractUserMessagesTranscript(chatMessages);
@@ -58,18 +59,90 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
   // Build comparison summary
   const choicesSummary = buildComparisonChoicesSummary(comparisonChoices.length);
 
+  // Build chosen tracks listing (if provided) and pick those that are "jokeable"
+  const normalize = (s?: string) => (s || "").trim();
+
+  const isJokeable = (title: string, artist: string): boolean => {
+    const text = `${title} ${artist}`.toLowerCase();
+
+    // Simple heuristic: titles/artists with overt sentiment words or popy/cheesy keywords
+    const jokableKeywords = [
+      "baby",
+      "love",
+      "heart",
+      "dance",
+      "party",
+      "rain",
+      "cry",
+      "emo",
+      "sad",
+      "queen",
+      "king",
+      "angel",
+      "rock",
+      "metal",
+      "pop",
+      "trap",
+      "rap",
+      "country",
+      "baby",
+      "girl",
+      "boy",
+      "lord"
+    ];
+
+    return jokableKeywords.some((k) => text.includes(k));
+  };
+
+  let chosenListText = "";
+  let jokeableListText = "";
+
+  if (Array.isArray(chosenTrackMeta) && chosenTrackMeta.length > 0) {
+    const all = chosenTrackMeta.map((t) => {
+      const title = normalize(t.title) || t.id;
+      const artist = normalize(t.artist) || "";
+      return { id: t.id, title, artist };
+    });
+
+    chosenListText = all
+      .map((t) => (t.artist ? `${t.title} by ${t.artist}` : `${t.title}`))
+      .join("; ");
+
+    const jokeable = all.filter((t) => isJokeable(t.title, t.artist));
+
+    if (jokeable.length > 0) {
+      jokeableListText = jokeable
+        .map((t) => (t.artist ? `${t.title} by ${t.artist}` : `${t.title}`))
+        .join("; ");
+    }
+  }
+
   // Construct the full prompt
-  const userPrompt = [
-    "Here's what I learned about someone's music taste:",
-    "",
-    `What they said: "${userTranscript}"`,
-    "",
-    `Vibe profile: ${vibeSummary}`,
-    "",
-    choicesSummary,
-    "",
-    "Now, give them a playful, unflinching judgement about what all this says about them as a person. One paragraph, 3-5 sentences. Go."
-  ].join("\n");
+  const userPromptParts: string[] = [];
+  userPromptParts.push("Here's what I learned about someone's music taste:");
+  userPromptParts.push("");
+  userPromptParts.push(`What they said: "${userTranscript}"`);
+  userPromptParts.push("");
+  userPromptParts.push(`Vibe profile: ${vibeSummary}`);
+  userPromptParts.push("");
+  userPromptParts.push(choicesSummary);
+
+  if (chosenListText) {
+    userPromptParts.push("");
+    userPromptParts.push(`Chosen tracks: ${chosenListText}`);
+  }
+
+  if (jokeableListText) {
+    userPromptParts.push("");
+    userPromptParts.push(`Tracks good for jokes: ${jokeableListText}`);
+  }
+
+  userPromptParts.push("");
+  userPromptParts.push(
+    "Now, deliver a harsher, biting and playful judgement about what all this says about them. Use the vibe profile and, when appropriate, make sharp jokes about the listed tracks or artists. One paragraph, 3-5 sentences. Do not use explicit slurs or threats."
+  );
+
+  const userPrompt = userPromptParts.join("\n");
 
   // Estimate tokens for the full prompt
   const systemTokens = estimateTokenCount(JUDGEMENT_SYSTEM_PROMPT);

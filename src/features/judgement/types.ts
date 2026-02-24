@@ -10,6 +10,11 @@ export interface JudgementPromptInput {
   chatMessages: ChatMessage[];
   vibeCategories: string[];
   comparisonChoices: ComparisonRoundChoice[];
+  chosenTrackMeta?: Array<{
+    id: string;
+    title?: string;
+    artist?: string;
+  }>;
 }
 
 export interface JudgementPromptResult {
