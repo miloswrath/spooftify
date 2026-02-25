@@ -59,43 +59,9 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
   // Build comparison summary
   const choicesSummary = buildComparisonChoicesSummary(comparisonChoices.length);
 
-  // Build chosen tracks listing (if provided) and pick those that are "jokeable"
+  // Build chosen tracks listing (if provided)
   const normalize = (s?: string) => (s || "").trim();
-
-  const isJokeable = (title: string, artist: string): boolean => {
-    const text = `${title} ${artist}`.toLowerCase();
-
-    // Simple heuristic: titles/artists with overt sentiment words or popy/cheesy keywords
-    const jokableKeywords = [
-      "baby",
-      "love",
-      "heart",
-      "dance",
-      "party",
-      "rain",
-      "cry",
-      "emo",
-      "sad",
-      "queen",
-      "king",
-      "angel",
-      "rock",
-      "metal",
-      "pop",
-      "trap",
-      "rap",
-      "country",
-      "baby",
-      "girl",
-      "boy",
-      "lord"
-    ];
-
-    return jokableKeywords.some((k) => text.includes(k));
-  };
-
   let chosenListText = "";
-  let jokeableListText = "";
 
   if (Array.isArray(chosenTrackMeta) && chosenTrackMeta.length > 0) {
     const all = chosenTrackMeta.map((t) => {
@@ -107,14 +73,6 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
     chosenListText = all
       .map((t) => (t.artist ? `${t.title} by ${t.artist}` : `${t.title}`))
       .join("; ");
-
-    const jokeable = all.filter((t) => isJokeable(t.title, t.artist));
-
-    if (jokeable.length > 0) {
-      jokeableListText = jokeable
-        .map((t) => (t.artist ? `${t.title} by ${t.artist}` : `${t.title}`))
-        .join("; ");
-    }
   }
 
   // Construct the full prompt
@@ -132,10 +90,7 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
     userPromptParts.push(`Chosen tracks: ${chosenListText}`);
   }
 
-  if (jokeableListText) {
-    userPromptParts.push("");
-    userPromptParts.push(`Tracks good for jokes: ${jokeableListText}`);
-  }
+  
 
   userPromptParts.push("");
   userPromptParts.push(
@@ -147,7 +102,7 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
   // Estimate tokens for the full prompt
   const systemTokens = estimateTokenCount(JUDGEMENT_SYSTEM_PROMPT);
   const userTokens = estimateTokenCount(userPrompt);
-  const bufferTokens = 100; // For response generation headroom
+  const bufferTokens = 400; // For response generation headroom
   const totalEstimate = systemTokens + userTokens + bufferTokens;
 
   return {
