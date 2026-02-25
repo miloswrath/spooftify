@@ -1,14 +1,14 @@
+import type { Request, Response } from "express";
+import type { ComparisonRoundChoice } from "../../../features/comparison/types";
 import { buildJudgementPrompt, buildJudgementSystemPrompt } from "../../../features/judgement/promptBuilder";
-import { classifyJudgementInput } from "../../../server/llm/abuseGuard";
 import type {
   ChatMessage,
   JudgementGenerationError,
   JudgementGenerationResult,
   JudgementPromptInput
 } from "../../../features/judgement/types";
-import type { ComparisonRoundChoice } from "../../../features/comparison/types";
+import { classifyJudgementInput } from "../../../server/llm/abuseGuard";
 import type { LlmClient } from "../../../server/types";
-import type { Request, Response } from "express";
 
 type JudgementRequestBody = {
   chatMessages?: ChatMessage[];
@@ -86,19 +86,6 @@ const createJudgementApiHandler = (llmClient: LlmClient) => {
 
     const classification = classifyJudgementInput({ chatTranscript: combinedText, vibeCategories });
 
-    if (classification.blocked) {
-      // Log blocked reason server-side but do not expose internal details to clients
-      process.stderr.write(
-        `[abuseGuard] judgement blocked reason=${classification.reason} matches=${(classification.matches || []).join(",")}\n`
-      );
-
-      res.status(400).json({
-        code: "blocked_input",
-        message: "Request contains blocked content"
-      });
-
-      return;
-    }
 
     try {
       const result = await llmClient.generateJudgement(systemPrompt, userPrompt);

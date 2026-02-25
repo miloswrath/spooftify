@@ -6,11 +6,11 @@ import {
   ComparisonSearchError,
   fetchComparisonCandidates,
   loadComparisonSession,
+  resetComparisonSession,
   resolveSpotifyEmbedUrl,
   saveRoundChoice,
-  updateComparisonSession,
-  resetComparisonSession,
   startNewComparisonSession,
+  updateComparisonSession,
   type ComparisonRoundIndex,
   type ComparisonSessionState,
   type ComparisonTrackCandidate
@@ -468,11 +468,7 @@ export function App() {
           body = null;
         }
 
-        if (body?.code === "blocked_input") {
-          setError("Content blocked by policy — cannot generate judgement.");
-          setIsLoading(false);
-          return;
-        }
+
 
         setError((body && typeof body.message === "string") ? body.message : "Could not generate judgement. Please retry.");
         setIsLoading(false);
