@@ -11,11 +11,12 @@ const JUDGEMENT_SYSTEM_PROMPT = [
   "4. Use their comparison choices as evidence and, when useful, reference song or artist names to land jokes.",
   "5. You may quote up to 3 song titles or artist names from the provided list if they make a good punchline, but do NOT use explicit slurs or calls to violence.",
   "6. Do NOT overthink or hedge — be decisive and biting.",
-  "7. Output exactly ONE paragraph: 3-5 sentences. Keep it harsher than a neutral roast.",
+  "7. Output exactly ONE paragraph: 2-4 sentences. Keep it harsher than a neutral roast.",
   "8. Plain text only, no markdown or special formatting.",
   "9. No apologies or weasel language — state the judgement directly.",
   "10. Entertain with concise cruelty, not gratuitous harm.",
-  "11. Use information about the songs they selected like energy, tempo, and vibe while making your judgement"
+  "11. Use information about the songs they selected like energy, tempo, and vibe while making your judgement.",
+  "12. Do NOT blindly repeat their inputs from initial chat messages — use that information to understand their taste but craft original commentary."
 ].join(" ");
 
 const estimateTokenCount = (text: string): number => {
@@ -102,7 +103,7 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
   // Estimate tokens for the full prompt
   const systemTokens = estimateTokenCount(JUDGEMENT_SYSTEM_PROMPT);
   const userTokens = estimateTokenCount(userPrompt);
-  const bufferTokens = 400; // For response generation headroom
+  const bufferTokens = 700; // For response generation headroom
   const totalEstimate = systemTokens + userTokens + bufferTokens;
 
   return {

@@ -2,9 +2,9 @@ import type { LlmClient } from "../types";
 
 const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completions";
 const LOCAL_QWEN_MODEL_NAME = "zai-org/glm-4.7-flash";
-// Increase timeout to 180s to accommodate slow local model inference
+// Increase timeout to 300s to accommodate slow local model inference
 // (judgement generation can be heavier than query-text generation)
-const LOCAL_QWEN_TIMEOUT_MS = 180_000;
+const LOCAL_QWEN_TIMEOUT_MS = 300_000;
 
 const QUERY_TEXT_SYSTEM_PROMPT = [
   "You are a music intelligence engine that converts conversational emotional context into a high-quality Spotify search phrase.",
@@ -106,7 +106,7 @@ export function createLlmClient(): LlmClient {
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           // Log timeout for diagnostics
-          process.stderr.write(`[llm-client] generateJudgement timeout after ${LOCAL_QWEN_TIMEOUT_MS}ms\n`);
+          process.stderr.write(`[llm-client] generateQueryText timeout after ${LOCAL_QWEN_TIMEOUT_MS}ms\n`);
           throw new Error("timeout");
         }
 
