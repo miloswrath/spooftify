@@ -72,7 +72,7 @@ textarea {
   margin: 0 0 var(--app-space-2);
 }
 
-.app-main > section {
+.app-main>section {
   backdrop-filter: blur(12px);
   background: var(--app-panel);
   border: 1px solid var(--app-border);
@@ -252,6 +252,11 @@ textarea {
   z-index: 0;
 }
 
+.particle-background__canvas {
+  inset: 0;
+  position: absolute;
+}
+
 .particle-background__overlay {
   inset: 0;
   position: absolute;
@@ -260,169 +265,6 @@ textarea {
     radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.08), transparent 36%),
     radial-gradient(circle at 55% 85%, rgba(59, 130, 246, 0.07), transparent 34%),
     linear-gradient(180deg, rgba(2, 6, 23, 0.82), rgba(2, 6, 23, 0.62));
-}
-
-.particle-background__particle {
-  animation: particle-rise 22s linear infinite;
-  background: radial-gradient(circle, rgba(148, 163, 184, 0.7), rgba(148, 163, 184, 0));
-  border-radius: 999px;
-  bottom: -10vh;
-  filter: blur(0.35px);
-  height: 11px;
-  opacity: 0.1;
-  position: absolute;
-  width: 11px;
-}
-
-.particle-background__particle:nth-of-type(2n) {
-  height: 7px;
-  opacity: 0.09;
-  width: 7px;
-}
-
-.particle-background__particle:nth-of-type(3n) {
-  animation-duration: 26s;
-  opacity: 0.12;
-}
-
-.particle-background__particle:nth-of-type(4n) {
-  animation-duration: 18s;
-}
-
-.particle-background__particle:nth-of-type(1) {
-  left: 4%;
-  animation-delay: -2s;
-}
-
-.particle-background__particle:nth-of-type(2) {
-  left: 9%;
-  animation-delay: -6s;
-}
-
-.particle-background__particle:nth-of-type(3) {
-  left: 14%;
-  animation-delay: -11s;
-}
-
-.particle-background__particle:nth-of-type(4) {
-  left: 19%;
-  animation-delay: -1s;
-}
-
-.particle-background__particle:nth-of-type(5) {
-  left: 24%;
-  animation-delay: -8s;
-}
-
-.particle-background__particle:nth-of-type(6) {
-  left: 28%;
-  animation-delay: -3s;
-}
-
-.particle-background__particle:nth-of-type(7) {
-  left: 33%;
-  animation-delay: -12s;
-}
-
-.particle-background__particle:nth-of-type(8) {
-  left: 37%;
-  animation-delay: -5s;
-}
-
-.particle-background__particle:nth-of-type(9) {
-  left: 42%;
-  animation-delay: -9s;
-}
-
-.particle-background__particle:nth-of-type(10) {
-  left: 46%;
-  animation-delay: -7s;
-}
-
-.particle-background__particle:nth-of-type(11) {
-  left: 50%;
-  animation-delay: -4s;
-}
-
-.particle-background__particle:nth-of-type(12) {
-  left: 54%;
-  animation-delay: -10s;
-}
-
-.particle-background__particle:nth-of-type(13) {
-  left: 58%;
-  animation-delay: -6s;
-}
-
-.particle-background__particle:nth-of-type(14) {
-  left: 63%;
-  animation-delay: -13s;
-}
-
-.particle-background__particle:nth-of-type(15) {
-  left: 68%;
-  animation-delay: -3s;
-}
-
-.particle-background__particle:nth-of-type(16) {
-  left: 72%;
-  animation-delay: -8s;
-}
-
-.particle-background__particle:nth-of-type(17) {
-  left: 76%;
-  animation-delay: -12s;
-}
-
-.particle-background__particle:nth-of-type(18) {
-  left: 80%;
-  animation-delay: -4s;
-}
-
-.particle-background__particle:nth-of-type(19) {
-  left: 84%;
-  animation-delay: -7s;
-}
-
-.particle-background__particle:nth-of-type(20) {
-  left: 88%;
-  animation-delay: -1s;
-}
-
-.particle-background__particle:nth-of-type(21) {
-  left: 91%;
-  animation-delay: -9s;
-}
-
-.particle-background__particle:nth-of-type(22) {
-  left: 94%;
-  animation-delay: -5s;
-}
-
-.particle-background__particle:nth-of-type(23) {
-  left: 97%;
-  animation-delay: -11s;
-}
-
-.particle-background__particle:nth-of-type(24) {
-  left: 99%;
-  animation-delay: -2s;
-}
-
-@keyframes particle-rise {
-  0% {
-    opacity: 0;
-    transform: translateY(0) translateX(0) scale(0.8);
-  }
-
-  15% {
-    opacity: 0.2;
-  }
-
-  100% {
-    opacity: 0;
-    transform: translateY(-112vh) translateX(8px) scale(1.12);
-  }
 }
 
 .judgement-stage {
@@ -512,7 +354,7 @@ textarea {
     padding: 12px;
   }
 
-  .app-main > section {
+  .app-main>section {
     padding: 10px;
   }
 
@@ -526,7 +368,7 @@ textarea {
     padding: var(--app-space-4);
   }
 
-  .app-main > section {
+  .app-main>section {
     border-radius: 20px;
     padding: var(--app-space-3);
   }
@@ -542,7 +384,7 @@ textarea {
     padding: 24px;
   }
 
-  .app-main > section {
+  .app-main>section {
     margin: 0 auto;
     padding: 20px;
   }
@@ -562,10 +404,6 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .particle-background__particle {
-    animation: none;
-    opacity: 0.04;
-  }
 
   .comparison-card,
   .comparison-card__content,
