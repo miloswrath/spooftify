@@ -130,4 +130,24 @@ describe("comparison session storage", () => {
     expect(session.queryText).toBe("dreamy indie pop female vocals night drive");
     expect(loadComparisonSession()?.queryText).toBe("dreamy indie pop female vocals night drive");
   });
+
+  it("persists and recovers final judgement and clears on new session", () => {
+    startNewComparisonSession();
+
+    const saved = saveComparisonSession({
+      totalRounds: COMPARISON_TOTAL_ROUNDS,
+      queryText: "seed",
+      choices: [],
+      judgement: "You have an oddly cinematic taste.",
+      judgementGeneratedAt: 1670000000000
+    } as any);
+
+    expect(saved.judgement).toBe("You have an oddly cinematic taste.");
+    const loaded = loadComparisonSession();
+    expect(loaded?.judgement).toBe("You have an oddly cinematic taste.");
+
+    const newSession = startNewComparisonSession();
+    expect(newSession.judgement).toBeUndefined();
+    expect(loadComparisonSession()?.judgement).toBeUndefined();
+  });
 });

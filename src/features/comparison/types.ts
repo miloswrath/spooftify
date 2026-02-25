@@ -22,4 +22,6 @@ export interface ComparisonSessionState {
   totalRounds: typeof COMPARISON_TOTAL_ROUNDS;
   choices: ComparisonRoundChoice[];
   queryText: QUERY_TEXT | null;
+  judgement?: string;
+  judgementGeneratedAt?: number;
 }
