@@ -1,5 +1,10 @@
 import type { LlmClient } from "../types";
 
+const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
+const DEFAULT_GROQ_MODEL_NAME = "llama-3.3-70b-versatile";
+const GROQ_TIMEOUT_MS = 8_000;
+const MAX_QUERY_TEXT_KEYWORDS = 9;
+const NON_KEYWORD_CHARACTERS = /[^a-z0-9\s]+/g;
 const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completions";
 const LOCAL_QWEN_MODEL_NAME = "Qwen2.5 Coder 7B Instruct";
 const LOCAL_QWEN_TIMEOUT_MS = 300_000;
@@ -36,7 +41,19 @@ type OpenAiCompatibleResponse = {
   }>;
 };
 
-const normalizeQueryText = (value: string): string => value.trim().replace(/\s+/g, " ");
+const normalizeQueryText = (value: string): string => {
+  const normalized = value
+    .toLowerCase()
+    .replace(NON_KEYWORD_CHARACTERS, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized.split(" ").slice(0, MAX_QUERY_TEXT_KEYWORDS).join(" ");
+};
 
 const normalizeJudgement = (value: string): string => value.trim();
 
@@ -49,24 +66,31 @@ export function createLlmClient(): LlmClient {
     },
     async generateQueryText(input: string) {
       const trimmedInput = input.trim();
+      const apiKey = process.env.GROQ_API_KEY?.trim();
+      const modelName = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL_NAME;
 
       if (!trimmedInput) {
         throw new Error("empty_input");
       }
 
+      if (!apiKey) {
+        throw new Error("missing_api_key");
+      }
+
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => {
         abortController.abort();
-      }, LOCAL_QWEN_TIMEOUT_MS);
+      }, GROQ_TIMEOUT_MS);
 
       try {
-        const response = await fetch(LOCAL_QWEN_CHAT_COMPLETIONS_URL, {
+        const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: LOCAL_QWEN_MODEL_NAME,
+            model: modelName,
             temperature: 0.2,
             max_tokens: 32,
             messages: [
@@ -104,7 +128,7 @@ export function createLlmClient(): LlmClient {
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           // Log timeout for diagnostics
-          process.stderr.write(`[llm-client] generateQueryText timeout after ${LOCAL_QWEN_TIMEOUT_MS}ms\n`);
+          process.stderr.write(`[llm-client] generateQueryText timeout after ${GROQ_TIMEOUT_MS}ms\n`);
           throw new Error("timeout");
         }
 

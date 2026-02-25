@@ -58,7 +58,7 @@ const SWIPE_THRESHOLD_PX = 40;
 const MIN_USER_MESSAGES_FOR_QUERY = 3;
 
 const QUERY_GENERATION_ERROR_MESSAGE =
-  "Could not generate your Spotify search text. Check LM Studio and retry.";
+  "Could not generate your Spotify search text. Check Groq configuration and retry.";
 
 const ENERGY_QUESTION_POOL = [
   "How hard are we sending this right now?",

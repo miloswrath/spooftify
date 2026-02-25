@@ -20,6 +20,18 @@ pnpm install
 pnpm dev
 ```
 
+## Groq demo setup (Q&A + query text)
+- Create or update `.env.local` in this repo root (`spooftify/spooftify/.env.local`).
+- Add `GROQ_API_KEY=...` (do not commit this file).
+- Start API locally:
+```bash
+npm run dev:api
+```
+- Optional quick smoke (from another terminal):
+```bash
+node -e "const run=async()=>{const llm=await fetch('http://localhost:8787/api/llm/route',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:'night drive neon synth with punchy bass'})});const llmBody=await llm.json();const queryText=(llmBody&&typeof llmBody.queryText==='string')?llmBody.queryText:'';const cmp=await fetch('http://localhost:8787/api/comparison/search?q='+encodeURIComponent(queryText));const cmpBody=await cmp.json();console.log(JSON.stringify({llmStatus:llm.status,queryText,comparisonStatus:cmp.status,candidateCount:Array.isArray(cmpBody.candidates)?cmpBody.candidates.length:null,error:cmpBody.error??null},null,2));};run();"
+```
+
 ## Test suite
 ```bash
 pnpm test

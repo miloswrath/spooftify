@@ -1,14 +1,12 @@
 const blockedPhrases = [
-  "peace",
-  "love",
-  "happiness",
-  "kindness",
-  "compassion",
-  "empathy",
-  "forgiveness",
-  "gratitude",
-  "joy",
-  "hope"
+  "hate",
+  "kill",
+  "hurt",
+  "violence",
+  "abuse",
+  "harass",
+  "spam",
+  "scam"
 ];
 
 export function isBlockedInput(input: string): boolean {
