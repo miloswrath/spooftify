@@ -5,18 +5,17 @@ const JUDGEMENT_SYSTEM_PROMPT = [
   "Your job is to deliver an unfiltered, scathing, and darkly funny assessment of someone's music taste based on their vibe description and song choices.",
   "",
   "Rules:",
-  "1. Be merciless but clever — satire, sarcasm, and sharp roasting are encouraged.",
-  "2. Avoid tired clichés and generic music criticism.",
-  "3. Reference the vibe categories they provided and the songs they've chosen.",
-  "4. Use their comparison choices as evidence and, when useful, reference song or artist names to land jokes.",
-  "5. You may quote up to 3 song titles or artist names from the provided list if they make a good punchline, but do NOT use explicit slurs or calls to violence.",
-  "6. Do NOT overthink or hedge — be decisive and biting.",
-  "7. Output exactly ONE paragraph: 2-4 sentences. Keep it harsher than a neutral roast.",
-  "8. Plain text only, no markdown or special formatting.",
-  "9. No apologies or weasel language — state the judgement directly.",
-  "10. Entertain with concise cruelty, not gratuitous harm.",
-  "11. Use information about the songs they selected like energy, tempo, and vibe while making your judgement.",
-  "12. Do NOT blindly repeat their inputs from initial chat messages — use that information to understand their taste but craft original commentary."
+  "1. Be merciless and rude — satire, sarcasm, and sharp roasting are encouraged.",
+  "2. IMPORTANT: Output ONLY 3 sentences. Keep it VERY harsh.",
+  "3. CORRECTLY reference the songs they've chosen, looking up their provided Spotify ID to ensure any references to their title and artist are accurate.",
+  "4. You may quote up to 3 song titles or artist names from the provided list if they make a good punchline, but do NOT use explicit slurs or calls to violence.",
+  "5. Do NOT overthink or hedge — be decisive and biting.",
+  "6. Avoid tired clichés and generic music criticism.",
+  "7. Plain text only, no markdown or special formatting.",
+  "8. No apologies or weasel language — state the judgement directly.",
+  "9. Entertain with concise cruelty, not gratuitous harm.",
+  "10. Use information about the songs they selected like energy, tempo, and vibe while making your judgement.",
+  "11. Do NOT repeat their inputs from initial chat messages — use that information to understand their taste but craft original commentary."
 ].join(" ");
 
 const estimateTokenCount = (text: string): number => {
@@ -48,19 +47,15 @@ const buildComparisonChoicesSummary = (choiceCount: number): string => {
 export function buildJudgementPrompt(input: JudgementPromptInput): JudgementPromptResult {
   const { chatMessages, vibeCategories, comparisonChoices, chosenTrackMeta } = input;
 
-  // Extract user messages to build context
   const userTranscript = extractUserMessagesTranscript(chatMessages);
 
-  // Build the vibe category summary
   const vibeSummary =
     vibeCategories.length > 0
       ? `Key vibes: ${vibeCategories.join(", ")}.`
       : "No specific vibe categories extracted.";
 
-  // Build comparison summary
   const choicesSummary = buildComparisonChoicesSummary(comparisonChoices.length);
 
-  // Build chosen tracks listing (if provided)
   const normalize = (s?: string) => (s || "").trim();
   let chosenListText = "";
 
@@ -76,7 +71,6 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
       .join("; ");
   }
 
-  // Construct the full prompt
   const userPromptParts: string[] = [];
   userPromptParts.push("Here's what I learned about someone's music taste:");
   userPromptParts.push("");
@@ -95,7 +89,7 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
 
   userPromptParts.push("");
   userPromptParts.push(
-    "Now, deliver a harsher, biting and playful judgement about what all this says about them. Use the vibe profile and, when appropriate, make sharp jokes about the listed tracks or artists. One paragraph, 3-5 sentences. Do not use explicit slurs or threats."
+    "Now, deliver a harsher, biting and playful judgement about what all this says about them. Use the song selections and, when appropriate, make sharp jokes about the listed tracks or artists (check for accuracy). One paragraph, 3-4 sentences. Do not use explicit slurs or threats, but all other language is on the table."
   );
 
   const userPrompt = userPromptParts.join("\n");

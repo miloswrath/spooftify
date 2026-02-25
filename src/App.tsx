@@ -21,6 +21,7 @@ interface TrackOption {
   id: string;
   title: string;
   uri: string;
+  artistNames?: string[];
 }
 
 interface ComparisonPair {
@@ -223,7 +224,8 @@ const mapTrackCandidateToTrackOption = (
 ): TrackOption => ({
   id: candidate.id,
   title: candidate.title,
-  uri: candidate.uri
+  uri: candidate.uri,
+  artistNames: candidate.artistNames
 });
 
 const getComparisonErrorMessage = (error: unknown): string => {
@@ -398,23 +400,58 @@ export function App() {
       const comparisonChoices = session?.choices ?? [];
       const vibeCategories = extractVibeCategories(chatMessages);
 
-      // Build chosenTrackMeta from the session's chosenTrackIds using any available local candidate metadata
       const chosenIds = Array.from(new Set(comparisonChoices.map((c) => c.chosenTrackId)));
 
-      const chosenTrackMeta = chosenIds.map((id) => {
-        const match = comparisonCandidates.find((t) => t.id === id);
-        if (match) {
-          // Try to split title into title/artist if format 'Song Title by Artist' was used
-          const titleArtistMatch = /^(.*) by (.*)$/.exec(match.title || "");
-          return {
-            id,
-            title: titleArtistMatch ? titleArtistMatch[1].trim() : match.title,
-            artist: titleArtistMatch ? titleArtistMatch[2].trim() : undefined
-          };
-        }
+      const getTrackIdFromUri = (uri: string): string | null => {
+        const m = /^spotify:track:([A-Za-z0-9]+)$/.exec((uri || "").trim());
+        return m ? m[1] : null;
+      };
 
-        return { id };
-      });
+      const fetchOembedMeta = async (uri: string): Promise<{ title?: string; artist?: string } | null> => {
+        const trackId = getTrackIdFromUri(uri);
+        if (!trackId) return null;
+
+        const trackUrl = `https://open.spotify.com/track/${encodeURIComponent(trackId)}`;
+        const endpoint = `https://open.spotify.com/oembed?${new URLSearchParams({ url: trackUrl }).toString()}`;
+
+        try {
+          const res = await fetch(endpoint);
+          if (!res.ok) return null;
+          const payload = await res.json();
+          const title = typeof payload.title === "string" ? payload.title : undefined;
+          const artist = typeof payload.author_name === "string" ? payload.author_name : undefined;
+          return { title, artist };
+        } catch {
+          return null;
+        }
+      };
+
+      const chosenTrackMeta = await Promise.all(
+        chosenIds.map(async (id) => {
+          const match = comparisonCandidates.find((t) => t.id === id);
+
+          if (match) {
+            const title = match.title;
+            const artist = Array.isArray(match.artistNames) && match.artistNames.length > 0
+              ? match.artistNames[0]
+              : undefined;
+
+            if (artist) return { id, title, artist };
+
+            // Try oEmbed fallback when artist not present in candidate
+            const meta = await fetchOembedMeta(id);
+            return {
+              id,
+              title: title || meta?.title,
+              artist: meta?.artist
+            };
+          }
+
+          // If we don't have a local candidate match, attempt oEmbed lookup
+          const meta = await fetchOembedMeta(id);
+          return meta ? { id, title: meta.title, artist: meta.artist } : { id };
+        })
+      );
 
       const response = await fetch("/api/judgement/route", {
         method: "POST",
@@ -423,7 +460,6 @@ export function App() {
       });
 
       if (!response.ok) {
-        // Try to parse a useful error body from the server
         let body: Record<string, unknown> | null = null;
 
         try {

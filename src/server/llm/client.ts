@@ -1,9 +1,7 @@
 import type { LlmClient } from "../types";
 
 const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completions";
-const LOCAL_QWEN_MODEL_NAME = "zai-org/glm-4.7-flash";
-// Increase timeout to 300s to accommodate slow local model inference
-// (judgement generation can be heavier than query-text generation)
+const LOCAL_QWEN_MODEL_NAME = "Qwen2.5 Coder 7B Instruct";
 const LOCAL_QWEN_TIMEOUT_MS = 300_000;
 
 const QUERY_TEXT_SYSTEM_PROMPT = [
@@ -141,7 +139,7 @@ export function createLlmClient(): LlmClient {
           body: JSON.stringify({
             model: LOCAL_QWEN_MODEL_NAME,
             temperature: 0.7,
-            max_tokens: 256,
+            max_tokens: 512,
             messages: [
               {
                 role: "system",
