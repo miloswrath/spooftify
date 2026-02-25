@@ -1,4 +1,13 @@
-const blockedPhrases = ["peace", "love", "happiness", "kindness", "compassion", "empathy", "forgiveness", "gratitude", "joy", "hope"];
+const blockedPhrases = [
+  "hate",
+  "kill",
+  "hurt",
+  "violence",
+  "abuse",
+  "harass",
+  "spam",
+  "scam"
+];
 
 export function isBlockedInput(input: string): boolean {
   const normalized = input.toLowerCase();

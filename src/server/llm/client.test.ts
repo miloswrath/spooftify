@@ -2,12 +2,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLlmClient } from "./client";
 
 describe("createLlmClient.generateQueryText", () => {
+  const originalGroqApiKey = process.env.GROQ_API_KEY;
+
   afterEach(() => {
+    process.env.GROQ_API_KEY = originalGroqApiKey;
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
-  it("builds an OpenAI-compatible request for local qwen and returns a normalized plain string", async () => {
+  it("builds a Groq OpenAI-compatible request and returns a normalized plain string", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+
     const fetchMock = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -37,13 +42,14 @@ describe("createLlmClient.generateQueryText", () => {
       { method: string; headers: Record<string, string>; body: string }
     ];
 
-    expect(url).toBe("http://127.0.0.1:1234/v1/chat/completions");
+    expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
     expect(options.method).toBe("POST");
     expect(options.headers["Content-Type"]).toBe("application/json");
+    expect(options.headers.Authorization).toBe("Bearer test-groq-key");
 
     const payload = JSON.parse(options.body);
 
-    expect(payload.model).toBe("qwen5.2");
+    expect(payload.model).toBe("openai/gpt-oss-20b");
     expect(payload.messages[0].role).toBe("system");
     expect(typeof payload.messages[0].content).toBe("string");
     expect(payload.messages[1]).toEqual({
@@ -53,6 +59,8 @@ describe("createLlmClient.generateQueryText", () => {
   });
 
   it("rejects malformed response payloads", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -67,6 +75,8 @@ describe("createLlmClient.generateQueryText", () => {
   });
 
   it("rejects empty output after normalization", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -88,7 +98,9 @@ describe("createLlmClient.generateQueryText", () => {
     await expect(client.generateQueryText("chill indie")).rejects.toThrow("empty_output");
   });
 
-  it("rejects with timeout when local model does not respond in time", async () => {
+  it("rejects with timeout when Groq does not respond in time", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+
     vi.useFakeTimers();
 
     const fetchMock = vi.fn((_url: string, options?: { signal?: AbortSignal }) => {
@@ -105,12 +117,14 @@ describe("createLlmClient.generateQueryText", () => {
     const pendingResult = client.generateQueryText("slow response");
     const timeoutExpectation = expect(pendingResult).rejects.toThrow("timeout");
 
-    await vi.advanceTimersByTimeAsync(4_100);
+    await vi.advanceTimersByTimeAsync(8_100);
 
     await timeoutExpectation;
   });
 
-  it("rejects with network_error when local endpoint is unreachable", async () => {
+  it("rejects with network_error when Groq endpoint is unreachable", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -121,5 +135,44 @@ describe("createLlmClient.generateQueryText", () => {
     const client = createLlmClient();
 
     await expect(client.generateQueryText("chill indie")).rejects.toThrow("network_error");
+  });
+
+  it("normalizes to lowercase keywords, strips punctuation, and caps to 9 tokens", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: " Neon, SYNTH-wave!!! driving bassline; shimmering arpeggios retro-futurist dancefloor pulse midnight "
+              }
+            }
+          ]
+        })
+      }))
+    );
+
+    const client = createLlmClient();
+    const result = await client.generateQueryText("night city vibe");
+
+    expect(result).toEqual({
+      queryText: "neon synth wave driving bassline shimmering arpeggios retro futurist"
+    });
+  });
+
+  it("rejects with missing_api_key when GROQ_API_KEY is not configured", async () => {
+    delete process.env.GROQ_API_KEY;
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createLlmClient();
+
+    await expect(client.generateQueryText("chill indie")).rejects.toThrow("missing_api_key");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
