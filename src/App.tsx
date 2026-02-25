@@ -398,10 +398,28 @@ export function App() {
       const comparisonChoices = session?.choices ?? [];
       const vibeCategories = extractVibeCategories(chatMessages);
 
+      // Build chosenTrackMeta from the session's chosenTrackIds using any available local candidate metadata
+      const chosenIds = Array.from(new Set(comparisonChoices.map((c) => c.chosenTrackId)));
+
+      const chosenTrackMeta = chosenIds.map((id) => {
+        const match = comparisonCandidates.find((t) => t.id === id);
+        if (match) {
+          // Try to split title into title/artist if format 'Song Title by Artist' was used
+          const titleArtistMatch = /^(.*) by (.*)$/.exec(match.title || "");
+          return {
+            id,
+            title: titleArtistMatch ? titleArtistMatch[1].trim() : match.title,
+            artist: titleArtistMatch ? titleArtistMatch[2].trim() : undefined
+          };
+        }
+
+        return { id };
+      });
+
       const response = await fetch("/api/judgement/route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatMessages, comparisonChoices, vibeCategories })
+        body: JSON.stringify({ chatMessages, comparisonChoices, vibeCategories, chosenTrackMeta })
       });
 
       if (!response.ok) {

@@ -13,6 +13,7 @@ import type { Request, Response } from "express";
 type JudgementRequestBody = {
   chatMessages?: ChatMessage[];
   comparisonChoices?: ComparisonRoundChoice[];
+  chosenTrackMeta?: Array<{ id: string; title?: string; artist?: string }>;
   vibeCategories?: string[];
 };
 
@@ -23,12 +24,25 @@ const isValidJudgementRequest = (body: unknown): body is JudgementRequestBody =>
     return false;
   }
 
-  const { chatMessages, comparisonChoices, vibeCategories } = body as Record<string, unknown>;
+  const {
+    chatMessages,
+    comparisonChoices,
+    vibeCategories,
+    chosenTrackMeta
+  } = body as Record<string, unknown>;
+
+  const isArrayOfObjects = (v: unknown) => Array.isArray(v) && (v as unknown[]).every((it) => typeof it === "object" && it !== null);
+
+  // chosenTrackMeta is optional, but if present must be an array of objects with an id
+  const chosenMetaValid = chosenTrackMeta === undefined || (
+    Array.isArray(chosenTrackMeta) && (chosenTrackMeta as unknown[]).every((m) => m && typeof m === "object" && typeof (m as any).id === "string")
+  );
 
   return (
-    Array.isArray(chatMessages) &&
-    Array.isArray(comparisonChoices) &&
-    Array.isArray(vibeCategories)
+    isArrayOfObjects(chatMessages) &&
+    isArrayOfObjects(comparisonChoices) &&
+    Array.isArray(vibeCategories) &&
+    chosenMetaValid
   );
 };
 
@@ -52,13 +66,14 @@ const createJudgementApiHandler = (llmClient: LlmClient) => {
       return;
     }
 
-    const { chatMessages, comparisonChoices, vibeCategories } = req.body;
+    const { chatMessages, comparisonChoices, vibeCategories, chosenTrackMeta } = req.body;
 
-    // Build the prompt
+    // Build the prompt (include any provided chosen track metadata)
     const promptInput: JudgementPromptInput = {
       chatMessages,
       comparisonChoices,
-      vibeCategories
+      vibeCategories,
+      chosenTrackMeta
     };
 
     const { prompt: userPrompt } = buildJudgementPrompt(promptInput);

@@ -1,8 +1,7 @@
 import type { LlmClient } from "../types";
 
 const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completions";
-// Use the local Qwen model name. Update this if your local LM exposes a different model id.
-const LOCAL_QWEN_MODEL_NAME = "qwen2.5";
+const LOCAL_QWEN_MODEL_NAME = "zai-org/glm-4.7-flash";
 // Increase timeout to 180s to accommodate slow local model inference
 // (judgement generation can be heavier than query-text generation)
 const LOCAL_QWEN_TIMEOUT_MS = 180_000;
