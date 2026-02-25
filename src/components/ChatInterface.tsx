@@ -127,7 +127,6 @@ export function ChatInterface({
           position: "sticky",
           bottom: 0,
           borderTop: "1px solid rgba(156, 163, 175, 0.35)",
-          background: "rgba(3, 7, 18, 0.84)",
           padding: "12px"
         }}
       >

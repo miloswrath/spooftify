@@ -72,7 +72,7 @@ textarea {
   margin: 0 0 var(--app-space-2);
 }
 
-.app-main section {
+.app-main > section {
   backdrop-filter: blur(12px);
   background: var(--app-panel);
   border: 1px solid var(--app-border);
@@ -512,7 +512,7 @@ textarea {
     padding: 12px;
   }
 
-  .app-main section {
+  .app-main > section {
     padding: 10px;
   }
 
@@ -526,7 +526,7 @@ textarea {
     padding: var(--app-space-4);
   }
 
-  .app-main section {
+  .app-main > section {
     border-radius: 20px;
     padding: var(--app-space-3);
   }
@@ -542,7 +542,7 @@ textarea {
     padding: 24px;
   }
 
-  .app-main section {
+  .app-main > section {
     margin: 0 auto;
     padding: 20px;
   }
