@@ -43,7 +43,9 @@ const isValidSessionState = (value: unknown): value is ComparisonSessionState =>
     session.totalRounds === COMPARISON_TOTAL_ROUNDS &&
     Array.isArray(session.choices) &&
     session.choices.every((choice) => isValidRoundChoice(choice)) &&
-    (session.queryText === undefined || typeof session.queryText === "string" || session.queryText === null)
+    (session.queryText === undefined || typeof session.queryText === "string" || session.queryText === null) &&
+    (session.judgement === undefined || typeof session.judgement === "string") &&
+    (session.judgementGeneratedAt === undefined || typeof session.judgementGeneratedAt === "number")
   );
 };
 
@@ -56,6 +58,7 @@ const createEmptySession = (): ComparisonSessionState => ({
 const normalizeSessionState = (session: ComparisonSessionState): ComparisonSessionState => ({
   ...session,
   queryText: typeof session.queryText === "string" ? session.queryText : null
+  // judgement and judgementGeneratedAt are intentionally left as-is
 });
 
 export const loadComparisonSession = (): ComparisonSessionState | null => {
@@ -129,4 +132,17 @@ export const saveQueryText = (queryText: QUERY_TEXT): ComparisonSessionState => 
     ...session,
     queryText
   });
+};
+
+export const updateComparisonSession = (
+  patch: Partial<ComparisonSessionState>
+): ComparisonSessionState => {
+  const session = loadComparisonSession() ?? createEmptySession();
+
+  const next: ComparisonSessionState = {
+    ...session,
+    ...patch
+  };
+
+  return saveComparisonSession(next);
 };

@@ -6,9 +6,11 @@ import {
   ComparisonSearchError,
   fetchComparisonCandidates,
   loadComparisonSession,
+  resetComparisonSession,
   resolveSpotifyEmbedUrl,
   saveRoundChoice,
   startNewComparisonSession,
+  updateComparisonSession,
   type ComparisonRoundIndex,
   type ComparisonSessionState,
   type ComparisonTrackCandidate
@@ -19,6 +21,7 @@ interface TrackOption {
   id: string;
   title: string;
   uri: string;
+  artistNames?: string[];
 }
 
 interface ComparisonPair {
@@ -221,7 +224,8 @@ const mapTrackCandidateToTrackOption = (
 ): TrackOption => ({
   id: candidate.id,
   title: candidate.title,
-  uri: candidate.uri
+  uri: candidate.uri,
+  artistNames: candidate.artistNames
 });
 
 const getComparisonErrorMessage = (error: unknown): string => {
@@ -346,6 +350,12 @@ export function App() {
       return;
     }
 
+    if (session.judgement) {
+      setJudgement(session.judgement);
+      setStep("judgement");
+      return;
+    }
+
     const progress = getProgressFromSession(session);
     setCurrentRound(progress.currentRound);
     setComparisonComplete(progress.comparisonComplete);
@@ -353,6 +363,150 @@ export function App() {
     setGlobalQueryText(session.queryText ?? "");
     setStep("compare");
   }, []);
+
+  const extractVibeCategories = (messages: ChatMessage[]): string[] => {
+    const text = messages.map((m) => m.content).join(" ").toLowerCase();
+    const categories = new Set<string>();
+
+    if (/\b(hype|high energy|energy|party|wild|rage|fast|hard|loud)\b/.test(text)) {
+      categories.add("high energy");
+    }
+
+    if (/\b(chill|calm|soft|lofi|study|sleep|focus|cozy|relax)\b/.test(text)) {
+      categories.add("low energy");
+    }
+
+    if (/\b(introspect|introspective|sad|melanch|emo)\b/.test(text)) {
+      categories.add("introspective");
+    }
+
+    if (/\b(experiment|weird|avant|experimental)\b/.test(text)) {
+      categories.add("experimental");
+    }
+
+    if (/\b(throwback|nostalg|retro)\b/.test(text)) {
+      categories.add("nostalgic");
+    }
+
+    return Array.from(categories);
+  };
+
+  const requestJudgement = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const session = loadComparisonSession();
+      const comparisonChoices = session?.choices ?? [];
+      const vibeCategories = extractVibeCategories(chatMessages);
+
+      const chosenIds = Array.from(new Set(comparisonChoices.map((c) => c.chosenTrackId)));
+
+      const getTrackIdFromUri = (uri: string): string | null => {
+        const m = /^spotify:track:([A-Za-z0-9]+)$/.exec((uri || "").trim());
+        return m ? m[1] : null;
+      };
+
+      const fetchOembedMeta = async (uri: string): Promise<{ title?: string; artist?: string } | null> => {
+        const trackId = getTrackIdFromUri(uri);
+        if (!trackId) return null;
+
+        const trackUrl = `https://open.spotify.com/track/${encodeURIComponent(trackId)}`;
+        const endpoint = `https://open.spotify.com/oembed?${new URLSearchParams({ url: trackUrl }).toString()}`;
+
+        try {
+          const res = await fetch(endpoint);
+          if (!res.ok) return null;
+          const payload = await res.json();
+          const title = typeof payload.title === "string" ? payload.title : undefined;
+          const artist = typeof payload.author_name === "string" ? payload.author_name : undefined;
+          return { title, artist };
+        } catch {
+          return null;
+        }
+      };
+
+      const chosenTrackMeta = await Promise.all(
+        chosenIds.map(async (id) => {
+          const match = comparisonCandidates.find((t) => t.id === id);
+
+          if (match) {
+            const title = match.title;
+            const artist = Array.isArray(match.artistNames) && match.artistNames.length > 0
+              ? match.artistNames[0]
+              : undefined;
+
+            if (artist) return { id, title, artist };
+
+            // Try oEmbed fallback when artist not present in candidate
+            const meta = await fetchOembedMeta(id);
+            return {
+              id,
+              title: title || meta?.title,
+              artist: meta?.artist
+            };
+          }
+
+          // If we don't have a local candidate match, attempt oEmbed lookup
+          const meta = await fetchOembedMeta(id);
+          return meta ? { id, title: meta.title, artist: meta.artist } : { id };
+        })
+      );
+
+      const response = await fetch("/api/judgement/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatMessages, comparisonChoices, vibeCategories, chosenTrackMeta })
+      });
+
+      if (!response.ok) {
+        let body: Record<string, unknown> | null = null;
+
+        try {
+          body = (await response.json()) as Record<string, unknown>;
+        } catch {
+          body = null;
+        }
+
+
+
+        setError((body && typeof body.message === "string") ? body.message : "Could not generate judgement. Please retry.");
+        setIsLoading(false);
+        return;
+      }
+
+      const payload = (await response.json()) as { judgement?: unknown };
+
+      if (typeof payload.judgement !== "string" || !payload.judgement.trim()) {
+        throw new Error("invalid_judgement_response");
+      }
+
+      const final = payload.judgement.trim();
+      setJudgement(final);
+      updateComparisonSession({ judgement: final, judgementGeneratedAt: Date.now() });
+      setIsLoading(false);
+      setStep("judgement");
+    } catch (err) {
+      setError("Could not generate judgement. Please retry.");
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!comparisonComplete || step !== "compare") {
+      return;
+    }
+
+    const session = loadComparisonSession();
+
+    if (session?.judgement) {
+      setJudgement(session.judgement);
+      setStep("judgement");
+      return;
+    }
+
+    void requestJudgement();
+  }, [comparisonComplete, step]);
 
   useEffect(() => {
     if (step !== "compare") {
@@ -905,17 +1059,17 @@ export function App() {
           error={error}
           onRetry={() => {
             setError("");
-            setIsLoading(true);
-            setTimeout(() => {
-              setIsLoading(false);
-              setJudgement("You've got great taste! Your music choices reveal a deep emotional intelligence.");
-            }, 1500);
+            void requestJudgement();
           }}
           onNewSession={() => {
+            resetComparisonSession();
             setStep("chat");
             setJudgement("");
             setError("");
             setIsLoading(false);
+            setActiveQueryText(null);
+            setGlobalQueryText("");
+            setComparisonCandidates(FALLBACK_COMPARISON_CANDIDATES);
           }}
         />
       ) : null}

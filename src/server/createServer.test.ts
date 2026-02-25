@@ -15,6 +15,9 @@ describe("createServer", () => {
   ]);
   const summarizeVibe = vi.fn(async () => ({ vibe: "chill" }));
   const generateQueryText = vi.fn(async () => ({ queryText: "dreamy indie pop female vocals" }));
+  const generateJudgement = vi.fn(async () => ({
+    judgement: "Your taste is wonderfully chaotic."
+  }));
   const stderrWriteSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
   const server = createServer({
@@ -29,7 +32,8 @@ describe("createServer", () => {
     },
     llmClient: {
       summarizeVibe,
-      generateQueryText
+      generateQueryText,
+      generateJudgement
     }
   });
 
@@ -39,6 +43,7 @@ describe("createServer", () => {
     searchTracks.mockClear();
     summarizeVibe.mockClear();
     generateQueryText.mockClear();
+    generateJudgement.mockClear();
     stderrWriteSpy.mockClear();
   });
 
@@ -281,7 +286,8 @@ describe("createServer", () => {
         summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
         generateQueryText: vi.fn(async () => {
           throw new Error("timeout");
-        })
+        }),
+        generateJudgement: vi.fn()
       }
     });
 
@@ -311,7 +317,8 @@ describe("createServer", () => {
         summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
         generateQueryText: vi.fn(async () => {
           throw new Error("network_error");
-        })
+        }),
+        generateJudgement: vi.fn()
       }
     });
 
@@ -329,7 +336,8 @@ describe("createServer", () => {
         summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
         generateQueryText: vi.fn(async () => {
           throw new Error("provider_status_error");
-        })
+        }),
+        generateJudgement: vi.fn()
       }
     });
 
@@ -379,7 +387,8 @@ describe("createServer", () => {
       },
       llmClient: {
         summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
-        generateQueryText: vi.fn(async () => ({ queryText: "dreamy   indie\tpop" }))
+        generateQueryText: vi.fn(async () => ({ queryText: "dreamy   indie\tpop" })),
+        generateJudgement: vi.fn()
       }
     });
 

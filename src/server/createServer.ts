@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { createJudgementRoute } from "../app/api/judgement/route";
 import { sanitizeQueryText } from "../lib/queryText";
 import { isBlockedInput } from "./llm/abuseGuard";
 import type {
@@ -242,6 +243,8 @@ export function createServer(deps: ServerDeps) {
       });
     }
   });
+
+  app.post("/api/judgement/route", createJudgementRoute(deps.llmClient));
 
   return app;
 }
