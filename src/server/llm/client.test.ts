@@ -3,9 +3,11 @@ import { createLlmClient } from "./client";
 
 describe("createLlmClient.generateQueryText", () => {
   const originalGroqApiKey = process.env.GROQ_API_KEY;
+  const originalGroqModel = process.env.GROQ_MODEL;
 
   afterEach(() => {
     process.env.GROQ_API_KEY = originalGroqApiKey;
+    process.env.GROQ_MODEL = originalGroqModel;
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -49,7 +51,7 @@ describe("createLlmClient.generateQueryText", () => {
 
     const payload = JSON.parse(options.body);
 
-    expect(payload.model).toBe("openai/gpt-oss-20b");
+    expect(payload.model).toBe("llama-3.3-70b-versatile");
     expect(payload.messages[0].role).toBe("system");
     expect(typeof payload.messages[0].content).toBe("string");
     expect(payload.messages[1]).toEqual({
@@ -162,6 +164,37 @@ describe("createLlmClient.generateQueryText", () => {
     expect(result).toEqual({
       queryText: "neon synth wave driving bassline shimmering arpeggios retro futurist"
     });
+  });
+
+  it("uses GROQ_MODEL override when provided", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+    process.env.GROQ_MODEL = "openai/gpt-oss-20b";
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: "dreamy indie pop female vocals"
+            }
+          }
+        ]
+      })
+    }));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createLlmClient();
+    await client.generateQueryText("night drive vibes");
+
+    const [, options] = fetchMock.mock.calls[0] as [
+      string,
+      { body: string }
+    ];
+
+    const payload = JSON.parse(options.body);
+    expect(payload.model).toBe("openai/gpt-oss-20b");
   });
 
   it("rejects with missing_api_key when GROQ_API_KEY is not configured", async () => {

@@ -1,7 +1,7 @@
 import type { LlmClient } from "../types";
 
 const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL_NAME = "openai/gpt-oss-20b";
+const DEFAULT_GROQ_MODEL_NAME = "llama-3.3-70b-versatile";
 const GROQ_TIMEOUT_MS = 8_000;
 const MAX_QUERY_TEXT_KEYWORDS = 9;
 const NON_KEYWORD_CHARACTERS = /[^a-z0-9\s]+/g;
@@ -62,6 +62,7 @@ export function createLlmClient(): LlmClient {
     async generateQueryText(input: string) {
       const trimmedInput = input.trim();
       const apiKey = process.env.GROQ_API_KEY?.trim();
+      const modelName = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL_NAME;
 
       if (!trimmedInput) {
         throw new Error("empty_input");
@@ -84,7 +85,7 @@ export function createLlmClient(): LlmClient {
             Authorization: `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: GROQ_MODEL_NAME,
+            model: modelName,
             temperature: 0.2,
             max_tokens: 32,
             messages: [
