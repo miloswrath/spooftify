@@ -1,15 +1,15 @@
 import cors from "cors";
 import express from "express";
-import { createJudgementRoute } from "../app/api/judgement/route";
-import { sanitizeQueryText } from "../lib/queryText";
-import { isBlockedInput } from "./llm/abuseGuard";
+import { createJudgementRoute } from "../app/api/judgement/route.js";
+import { sanitizeQueryText } from "../lib/queryText/index.js";
+import { isBlockedInput } from "./llm/abuseGuard.js";
 import type {
   Api1Client,
   Api2Client,
   ComparisonTrackCandidate,
   LlmClient,
   SpotifyClient
-} from "./types";
+} from "./types.js";
 
 const SPOTIFY_SEARCH_TYPE = "track" as const;
 const SPOTIFY_SEARCH_LIMIT = 10;

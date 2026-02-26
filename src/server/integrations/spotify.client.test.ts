@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createSpotifyClient } from "./spotify.client";
+import { createSpotifyClient } from "./spotify.client.js";
 
 const SPOTIFY_TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token";
 const SPOTIFY_SEARCH_ENDPOINT = "https://api.spotify.com/v1/search";

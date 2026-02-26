@@ -2,7 +2,7 @@ import type {
     ComparisonTrackCandidate,
     SpotifyClient,
     SpotifySearchParams
-} from "../types";
+} from "../types.js";
 
 const SPOTIFY_TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token";
 const SPOTIFY_SEARCH_ENDPOINT = "https://api.spotify.com/v1/search";

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createLlmClient } from "./client";
+import { createLlmClient } from "./client.js";
 
 describe("createLlmClient.generateQueryText", () => {
   const originalGroqApiKey = process.env.GROQ_API_KEY;
@@ -39,10 +39,24 @@ describe("createLlmClient.generateQueryText", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    const [url, options] = fetchMock.mock.calls[0] as [
-      string,
-      { method: string; headers: Record<string, string>; body: string }
-    ];
+    const firstCall = fetchMock.mock.calls.at(0) as
+      | [
+        string,
+        {
+          method: string;
+          headers: Record<string, string>;
+          body: string;
+        }
+      ]
+      | undefined;
+
+    expect(firstCall).toBeDefined();
+
+    if (!firstCall) {
+      throw new Error("expected fetch call");
+    }
+
+    const [url, options] = firstCall;
 
     expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
     expect(options.method).toBe("POST");
@@ -188,10 +202,17 @@ describe("createLlmClient.generateQueryText", () => {
     const client = createLlmClient();
     await client.generateQueryText("night drive vibes");
 
-    const [, options] = fetchMock.mock.calls[0] as [
-      string,
-      { body: string }
-    ];
+    const firstCall = fetchMock.mock.calls.at(0) as
+      | [string, { body: string }]
+      | undefined;
+
+    expect(firstCall).toBeDefined();
+
+    if (!firstCall) {
+      throw new Error("expected fetch call");
+    }
+
+    const [, options] = firstCall;
 
     const payload = JSON.parse(options.body);
     expect(payload.model).toBe("openai/gpt-oss-20b");

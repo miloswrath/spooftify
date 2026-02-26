@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
-import { createServer } from "../createServer";
-import type { Api1Client, Api2Client, LlmClient, SpotifyClient } from "../types";
-import type { ChatMessage } from "../../features/judgement/types";
-import type { ComparisonRoundChoice } from "../../features/comparison/types";
+import { createServer } from "../createServer.js";
+import type { Api1Client, Api2Client, LlmClient, SpotifyClient } from "../types.js";
+import type { ChatMessage } from "../../features/judgement/types.js";
+import type { ComparisonRoundChoice } from "../../features/comparison/types.js";
 
 describe("POST /api/judgement/route", () => {
   // Mock clients

@@ -1,4 +1,4 @@
-import type { LlmClient } from "../types";
+import type { LlmClient } from "../types.js";
 
 const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_GROQ_MODEL_NAME = "llama-3.3-70b-versatile";

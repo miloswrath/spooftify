@@ -1,6 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createServer } from "./createServer";
+import { createServer } from "./createServer.js";
 
 describe("createServer", () => {
   const fetchPreviewTrack = vi.fn(async (seed: string) => ({ id: "t1", title: seed }));

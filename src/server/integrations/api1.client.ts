@@ -1,4 +1,4 @@
-import type { Api1Client } from "../types";
+import type { Api1Client } from "../types.js";
 
 export function createApi1Client(): Api1Client {
   return {

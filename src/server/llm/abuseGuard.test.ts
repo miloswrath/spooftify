@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBlockedInput } from "./abuseGuard";
+import { isBlockedInput } from "./abuseGuard.js";
 
 describe("isBlockedInput", () => {
   it("flags blocked phrases", () => {

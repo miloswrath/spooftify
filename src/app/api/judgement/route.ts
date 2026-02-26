@@ -1,20 +1,20 @@
 import type { Request, Response } from "express";
-import type { ComparisonRoundChoice } from "../../../features/comparison/types";
-import { buildJudgementPrompt, buildJudgementSystemPrompt } from "../../../features/judgement/promptBuilder";
+import type { ComparisonRoundChoice } from "../../../features/comparison/types.js";
+import { buildJudgementPrompt, buildJudgementSystemPrompt } from "../../../features/judgement/promptBuilder.js";
 import type {
   ChatMessage,
   JudgementGenerationError,
   JudgementGenerationResult,
   JudgementPromptInput
-} from "../../../features/judgement/types";
-import { classifyJudgementInput } from "../../../server/llm/abuseGuard";
-import type { LlmClient } from "../../../server/types";
+} from "../../../features/judgement/types.js";
+import { classifyJudgementInput } from "../../../server/llm/abuseGuard.js";
+import type { LlmClient } from "../../../server/types.js";
 
 type JudgementRequestBody = {
-  chatMessages?: ChatMessage[];
-  comparisonChoices?: ComparisonRoundChoice[];
+  chatMessages: ChatMessage[];
+  comparisonChoices: ComparisonRoundChoice[];
   chosenTrackMeta?: Array<{ id: string; title?: string; artist?: string }>;
-  vibeCategories?: string[];
+  vibeCategories: string[];
 };
 
 type JudgementResponse = JudgementGenerationResult | JudgementGenerationError;

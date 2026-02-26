@@ -1,4 +1,4 @@
-import { COMPARISON_TOTAL_ROUNDS } from "./constants";
+import { COMPARISON_TOTAL_ROUNDS } from "./constants.js";
 
 export type ComparisonRoundIndex =
   | 1

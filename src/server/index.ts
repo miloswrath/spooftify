@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createServer } from "./createServer";
-import { createApi1Client } from "./integrations/api1.client";
-import { createApi2Client } from "./integrations/api2.client";
-import { createSpotifyClient } from "./integrations/spotify.client";
-import { createLlmClient } from "./llm/client";
+import { createServer } from "./createServer.js";
+import { createApi1Client } from "./integrations/api1.client.js";
+import { createApi2Client } from "./integrations/api2.client.js";
+import { createSpotifyClient } from "./integrations/spotify.client.js";
+import { createLlmClient } from "./llm/client.js";
 
 const loadLocalEnvFile = () => {
   const envFilePath = path.resolve(process.cwd(), ".env.local");

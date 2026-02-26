@@ -1,4 +1,4 @@
-import type { ComparisonRoundChoice } from "../comparison/types";
+import type { ComparisonRoundChoice } from "../comparison/types.js";
 
 export interface ChatMessage {
   id: string;
