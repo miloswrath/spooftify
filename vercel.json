@@ -5,10 +5,14 @@
   "outputDirectory": "dist",
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/api/[...path].ts"
+    },
+    {
       "handle": "filesystem"
     },
     {
-      "src": "/.*",
+      "src": "/(.*)",
       "dest": "/index.html"
     }
   ]

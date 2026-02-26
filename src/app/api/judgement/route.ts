@@ -47,7 +47,10 @@ const isValidJudgementRequest = (body: unknown): body is JudgementRequestBody =>
 };
 
 const createJudgementApiHandler = (llmClient: LlmClient) => {
-  const handler: RequestHandler<Record<string, string>, JudgementResponse, JudgementRequestBody> = async (req, res) => {
+  const handler: RequestHandler<Record<string, string>, JudgementResponse, JudgementRequestBody> = async (
+    req: any,
+    res: any
+  ) => {
     // Validate request body structure
     if (!isValidJudgementRequest(req.body)) {
       res.status(400).json({
