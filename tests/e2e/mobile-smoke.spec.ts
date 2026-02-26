@@ -50,6 +50,16 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
     });
   });
 
+  await page.route("**/api/judgement/route", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        judgement: "E2E judgement mock."
+      })
+    });
+  });
+
   await page.route("https://open.spotify.com/oembed*", async (route) => {
     await route.fulfill({
       status: 200,

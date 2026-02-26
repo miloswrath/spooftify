@@ -8,9 +8,11 @@ import {
   ComparisonSearchError,
   fetchComparisonCandidates,
   loadComparisonSession,
+  resetComparisonSession,
   resolveSpotifyEmbedUrl,
   saveRoundChoice,
   startNewComparisonSession,
+  updateComparisonSession,
   type ComparisonRoundIndex,
   type ComparisonSessionState,
   type ComparisonTrackCandidate
@@ -21,6 +23,7 @@ interface TrackOption {
   id: string;
   title: string;
   uri: string;
+  artistNames?: string[];
 }
 
 interface ComparisonPair {
@@ -30,14 +33,34 @@ interface ComparisonPair {
 
 type ComparisonSide = "left" | "right";
 
+const FALLBACK_COMPARISON_CANDIDATES: TrackOption[] = [
+  {
+    id: "spotify:track:4uLU6hMCjMI75M1A2tKUQC",
+    title: "Option A",
+    uri: "spotify:track:4uLU6hMCjMI75M1A2tKUQC"
+  },
+  {
+    id: "spotify:track:1301WleyT98MSxVHPZCA6M",
+    title: "Option B",
+    uri: "spotify:track:1301WleyT98MSxVHPZCA6M"
+  },
+  {
+    id: "spotify:track:5ChkMS8OtdzJeqyybCc9R5",
+    title: "Option C",
+    uri: "spotify:track:5ChkMS8OtdzJeqyybCc9R5"
+  },
+  {
+    id: "spotify:track:3AJwUDP919kvQ9QcozQPxg",
+    title: "Option D",
+    uri: "spotify:track:3AJwUDP919kvQ9QcozQPxg"
+  }
+];
+
 const SWIPE_THRESHOLD_PX = 40;
 const MIN_USER_MESSAGES_FOR_QUERY = 3;
 
 const QUERY_GENERATION_ERROR_MESSAGE =
-  "Could not generate your Spotify search text. Check LM Studio and retry.";
-const COMPARISON_CANDIDATE_SHORTLIST_ERROR_MESSAGE =
-  "Could not load comparison tracks. Please retry.";
-const EMBED_RETRY_GRACE_MS = 700;
+  "Could not generate your Spotify search text. Check Groq configuration and retry.";
 
 const ENERGY_QUESTION_POOL = [
   "How hard are we sending this right now?",
@@ -203,7 +226,8 @@ const mapTrackCandidateToTrackOption = (
 ): TrackOption => ({
   id: candidate.id,
   title: candidate.title,
-  uri: candidate.uri
+  uri: candidate.uri,
+  artistNames: candidate.artistNames
 });
 
 const getComparisonErrorMessage = (error: unknown): string => {
@@ -298,11 +322,13 @@ export function App() {
   const [judgement, setJudgement] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [activeQueryText, setActiveQueryText] = useState<string | null>(null);
   const [comparisonPair, setComparisonPair] = useState<ComparisonPair | null>(null);
-  const [comparisonCandidates, setComparisonCandidates] = useState<TrackOption[]>([]);
+  const [comparisonCandidates, setComparisonCandidates] = useState<TrackOption[]>(
+    FALLBACK_COMPARISON_CANDIDATES
+  );
   const [comparisonErrorMessage, setComparisonErrorMessage] = useState("");
   const [isComparisonLoading, setIsComparisonLoading] = useState(false);
-  const [hasComparisonLoadSettled, setHasComparisonLoadSettled] = useState(false);
   const [currentRound, setCurrentRound] = useState<ComparisonRoundIndex>(1);
   const [comparisonComplete, setComparisonComplete] = useState(false);
   const [pairRetryAttempt, setPairRetryAttempt] = useState(0);
@@ -315,7 +341,6 @@ export function App() {
     left: null,
     right: null
   });
-  const [embedRetryGraceElapsed, setEmbedRetryGraceElapsed] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const userMessageCount = chatMessages.filter((message) => message.role === "user").length;
   const canContinueToComparison = userMessageCount >= MIN_USER_MESSAGES_FOR_QUERY;
@@ -327,12 +352,163 @@ export function App() {
       return;
     }
 
+    if (session.judgement) {
+      setJudgement(session.judgement);
+      setStep("judgement");
+      return;
+    }
+
     const progress = getProgressFromSession(session);
     setCurrentRound(progress.currentRound);
     setComparisonComplete(progress.comparisonComplete);
+    setActiveQueryText(session.queryText);
     setGlobalQueryText(session.queryText ?? "");
     setStep("compare");
   }, []);
+
+  const extractVibeCategories = (messages: ChatMessage[]): string[] => {
+    const text = messages.map((m) => m.content).join(" ").toLowerCase();
+    const categories = new Set<string>();
+
+    if (/\b(hype|high energy|energy|party|wild|rage|fast|hard|loud)\b/.test(text)) {
+      categories.add("high energy");
+    }
+
+    if (/\b(chill|calm|soft|lofi|study|sleep|focus|cozy|relax)\b/.test(text)) {
+      categories.add("low energy");
+    }
+
+    if (/\b(introspect|introspective|sad|melanch|emo)\b/.test(text)) {
+      categories.add("introspective");
+    }
+
+    if (/\b(experiment|weird|avant|experimental)\b/.test(text)) {
+      categories.add("experimental");
+    }
+
+    if (/\b(throwback|nostalg|retro)\b/.test(text)) {
+      categories.add("nostalgic");
+    }
+
+    return Array.from(categories);
+  };
+
+  const requestJudgement = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const session = loadComparisonSession();
+      const comparisonChoices = session?.choices ?? [];
+      const vibeCategories = extractVibeCategories(chatMessages);
+
+      const chosenIds = Array.from(new Set(comparisonChoices.map((c) => c.chosenTrackId)));
+
+      const getTrackIdFromUri = (uri: string): string | null => {
+        const m = /^spotify:track:([A-Za-z0-9]+)$/.exec((uri || "").trim());
+        return m ? m[1] : null;
+      };
+
+      const fetchOembedMeta = async (uri: string): Promise<{ title?: string; artist?: string } | null> => {
+        const trackId = getTrackIdFromUri(uri);
+        if (!trackId) return null;
+
+        const trackUrl = `https://open.spotify.com/track/${encodeURIComponent(trackId)}`;
+        const endpoint = `https://open.spotify.com/oembed?${new URLSearchParams({ url: trackUrl }).toString()}`;
+
+        try {
+          const res = await fetch(endpoint);
+          if (!res.ok) return null;
+          const payload = await res.json();
+          const title = typeof payload.title === "string" ? payload.title : undefined;
+          const artist = typeof payload.author_name === "string" ? payload.author_name : undefined;
+          return { title, artist };
+        } catch {
+          return null;
+        }
+      };
+
+      const chosenTrackMeta = await Promise.all(
+        chosenIds.map(async (id) => {
+          const match = comparisonCandidates.find((t) => t.id === id);
+
+          if (match) {
+            const title = match.title;
+            const artist = Array.isArray(match.artistNames) && match.artistNames.length > 0
+              ? match.artistNames[0]
+              : undefined;
+
+            if (artist) return { id, title, artist };
+
+            // Try oEmbed fallback when artist not present in candidate
+            const meta = await fetchOembedMeta(id);
+            return {
+              id,
+              title: title || meta?.title,
+              artist: meta?.artist
+            };
+          }
+
+          // If we don't have a local candidate match, attempt oEmbed lookup
+          const meta = await fetchOembedMeta(id);
+          return meta ? { id, title: meta.title, artist: meta.artist } : { id };
+        })
+      );
+
+      const response = await fetch("/api/judgement/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatMessages, comparisonChoices, vibeCategories, chosenTrackMeta })
+      });
+
+      if (!response.ok) {
+        let body: Record<string, unknown> | null = null;
+
+        try {
+          body = (await response.json()) as Record<string, unknown>;
+        } catch {
+          body = null;
+        }
+
+
+
+        setError((body && typeof body.message === "string") ? body.message : "Could not generate judgement. Please retry.");
+        setIsLoading(false);
+        return;
+      }
+
+      const payload = (await response.json()) as { judgement?: unknown };
+
+      if (typeof payload.judgement !== "string" || !payload.judgement.trim()) {
+        throw new Error("invalid_judgement_response");
+      }
+
+      const final = payload.judgement.trim();
+      setJudgement(final);
+      updateComparisonSession({ judgement: final, judgementGeneratedAt: Date.now() });
+      setIsLoading(false);
+      setStep("judgement");
+    } catch (err) {
+      setError("Could not generate judgement. Please retry.");
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!comparisonComplete || step !== "compare") {
+      return;
+    }
+
+    const session = loadComparisonSession();
+
+    if (session?.judgement) {
+      setJudgement(session.judgement);
+      setStep("judgement");
+      return;
+    }
+
+    void requestJudgement();
+  }, [comparisonComplete, step]);
 
   useEffect(() => {
     if (step !== "compare") {
@@ -356,9 +532,8 @@ export function App() {
     const queryText = getGlobalQueryText();
 
     if (!queryText) {
-      setComparisonCandidates([]);
-      setComparisonErrorMessage(COMPARISON_CANDIDATE_SHORTLIST_ERROR_MESSAGE);
-      setHasComparisonLoadSettled(true);
+      setComparisonCandidates(FALLBACK_COMPARISON_CANDIDATES);
+      setComparisonErrorMessage("");
       return;
     }
 
@@ -366,8 +541,6 @@ export function App() {
 
     const loadCandidates = async () => {
       setIsComparisonLoading(true);
-      setHasComparisonLoadSettled(false);
-      setComparisonCandidates([]);
       setComparisonErrorMessage("");
 
       try {
@@ -379,13 +552,11 @@ export function App() {
 
         const mappedCandidates = result.candidates.map(mapTrackCandidateToTrackOption);
 
-        if (mappedCandidates.length < 2) {
-          setComparisonCandidates([]);
-          setComparisonErrorMessage(COMPARISON_CANDIDATE_SHORTLIST_ERROR_MESSAGE);
-          return;
-        }
-
-        setComparisonCandidates(mappedCandidates);
+        setComparisonCandidates(
+          mappedCandidates.length >= 2
+            ? mappedCandidates
+            : FALLBACK_COMPARISON_CANDIDATES
+        );
       } catch (error) {
         if (isCancelled) {
           return;
@@ -396,7 +567,6 @@ export function App() {
       } finally {
         if (!isCancelled) {
           setIsComparisonLoading(false);
-          setHasComparisonLoadSettled(true);
         }
       }
     };
@@ -457,39 +627,6 @@ export function App() {
     };
   }, [step, comparisonPair?.left.uri, comparisonPair?.right.uri]);
 
-  useEffect(() => {
-    if (step !== "compare") {
-      setEmbedRetryGraceElapsed(false);
-      return;
-    }
-
-    const hasPairUris = Boolean(comparisonPair?.left.uri && comparisonPair?.right.uri);
-
-    if (!hasPairUris || isComparisonLoading || Boolean(comparisonErrorMessage)) {
-      setEmbedRetryGraceElapsed(false);
-      return;
-    }
-
-    setEmbedRetryGraceElapsed(false);
-
-    const timerId = setTimeout(() => {
-      setEmbedRetryGraceElapsed(true);
-    }, EMBED_RETRY_GRACE_MS);
-
-    return () => {
-      clearTimeout(timerId);
-    };
-  }, [
-    step,
-    isComparisonLoading,
-    comparisonErrorMessage,
-    comparisonPair?.left.uri,
-    comparisonPair?.right.uri,
-    comparisonFetchVersion,
-    currentRound,
-    pairRetryAttempt
-  ]);
-
   const generateQueryText = async (queryInput: string): Promise<string> => {
     const response = await fetch("/api/llm/route", {
       method: "POST",
@@ -521,6 +658,7 @@ export function App() {
   const continueToComparisonWithQuery = (queryText: string) => {
     setGlobalQueryText(queryText);
     startNewComparisonSession(queryText);
+    setActiveQueryText(queryText);
     setComparisonPair(null);
     setCurrentRound(1);
     setComparisonComplete(false);
@@ -529,7 +667,6 @@ export function App() {
     setEmbedFailures({ left: false, right: false });
     setEmbedUrls({ left: null, right: null });
     setComparisonErrorMessage("");
-    setHasComparisonLoadSettled(false);
     setStep("compare");
   };
 
@@ -637,13 +774,11 @@ export function App() {
     setEmbedFailures({ left: false, right: false });
     setEmbedUrls({ left: null, right: null });
     setComparisonErrorMessage("");
-    setHasComparisonLoadSettled(false);
   };
 
   const handleRetryComparisonSearch = () => {
     setComparisonFetchVersion((previousVersion) => previousVersion + 1);
     setComparisonErrorMessage("");
-    setHasComparisonLoadSettled(false);
   };
 
   const handleComparisonTouchStart = (event: TouchEvent<HTMLElement>) => {
@@ -683,8 +818,6 @@ export function App() {
   const hasEmbedFailure = embedFailures.left || embedFailures.right;
   const showRetryState =
     step === "compare" &&
-    hasComparisonLoadSettled &&
-    embedRetryGraceElapsed &&
     !isComparisonLoading &&
     !comparisonErrorMessage &&
     (!hasValidPairData || hasEmbedFailure);
@@ -708,14 +841,9 @@ export function App() {
             {queryGenerationError ? (
               <div
                 aria-label="query-generation-error"
-                style={{
-                  border: "1px solid #f59e0b",
-                  borderRadius: "12px",
-                  marginTop: "12px",
-                  padding: "12px"
-                }}
+                className="comparison-stage__error"
               >
-                <p style={{ margin: "0 0 8px" }}>{queryGenerationError}</p>
+                <p>{queryGenerationError}</p>
                 <button
                   type="button"
                   aria-label="retry-query-generation"
@@ -743,8 +871,7 @@ export function App() {
             onTouchStart={handleComparisonTouchStart}
             onTouchEnd={handleComparisonTouchEnd}
             onTriggerFinalJudgement={() => {
-              setJudgement("You've got eclectic taste with a love for introspection—the kind of person who curates playlists like they're building a personality.");
-              setStep("judgement");
+              void requestJudgement();
             }}
           />
         ) : step === "judgement" ? (
@@ -754,17 +881,17 @@ export function App() {
             error={error}
             onRetry={() => {
               setError("");
-              setIsLoading(true);
-              setTimeout(() => {
-                setIsLoading(false);
-                setJudgement("You've got great taste! Your music choices reveal a deep emotional intelligence.");
-              }, 1500);
+              void requestJudgement();
             }}
             onNewSession={() => {
+              resetComparisonSession();
               setStep("chat");
               setJudgement("");
               setError("");
               setIsLoading(false);
+              setActiveQueryText(null);
+              setGlobalQueryText("");
+              setComparisonCandidates(FALLBACK_COMPARISON_CANDIDATES);
             }}
           />
         ) : null}

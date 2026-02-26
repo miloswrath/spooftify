@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { createJudgementRoute } from "../app/api/judgement/route";
 import { sanitizeQueryText } from "../lib/queryText";
 import { isBlockedInput } from "./llm/abuseGuard";
 import type {
@@ -43,6 +44,14 @@ type ComparisonSearchApiErrorCode =
   | "spotify_rate_limited"
   | "network_error"
   | "provider_unavailable";
+
+type LlmRouteErrorCode =
+  | "timeout"
+  | "network_error"
+  | "provider_unavailable"
+  | "invalid_response"
+  | "missing_api_key"
+  | "unknown_error";
 
 const getComparisonSearchApiErrorCode = (
   error: unknown
@@ -89,6 +98,36 @@ const logComparisonSearchFailure = (
   process.stderr.write(
     `[comparison-search] failed code=${code} query_length=${queryText.length}\n`
   );
+};
+
+const getLlmRouteErrorCode = (error: unknown): LlmRouteErrorCode => {
+  const code = error instanceof Error ? error.message : "";
+
+  if (code === "timeout") {
+    return "timeout";
+  }
+
+  if (code === "network_error") {
+    return "network_error";
+  }
+
+  if (code === "provider_status_error") {
+    return "provider_unavailable";
+  }
+
+  if (code === "invalid_response_body" || code === "empty_output") {
+    return "invalid_response";
+  }
+
+  if (code === "missing_api_key") {
+    return "missing_api_key";
+  }
+
+  return "unknown_error";
+};
+
+const logLlmRouteFailure = (code: LlmRouteErrorCode): void => {
+  process.stderr.write(`[llm-route] failed code=${code}\n`);
 };
 
 export function createServer(deps: ServerDeps) {
@@ -194,13 +233,18 @@ export function createServer(deps: ServerDeps) {
     try {
       const result = await deps.llmClient.generateQueryText(message);
       res.status(200).json(result);
-    } catch {
+    } catch (error) {
+      const code = getLlmRouteErrorCode(error);
+      logLlmRouteFailure(code);
+
       res.status(503).json({
         error: "query_text_unavailable",
-        message: "Could not generate your Spotify search text. Please retry."
+        message: "Could not generate your Spotify search text right now. Please retry."
       });
     }
   });
+
+  app.post("/api/judgement/route", createJudgementRoute(deps.llmClient));
 
   return app;
 }

@@ -15,6 +15,9 @@ describe("createServer", () => {
   ]);
   const summarizeVibe = vi.fn(async () => ({ vibe: "chill" }));
   const generateQueryText = vi.fn(async () => ({ queryText: "dreamy indie pop female vocals" }));
+  const generateJudgement = vi.fn(async () => ({
+    judgement: "Your taste is wonderfully chaotic."
+  }));
   const stderrWriteSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
   const server = createServer({
@@ -29,7 +32,8 @@ describe("createServer", () => {
     },
     llmClient: {
       summarizeVibe,
-      generateQueryText
+      generateQueryText,
+      generateJudgement
     }
   });
 
@@ -39,6 +43,7 @@ describe("createServer", () => {
     searchTracks.mockReset();
     summarizeVibe.mockReset();
     generateQueryText.mockReset();
+    generateJudgement.mockClear();
     stderrWriteSpy.mockClear();
 
     fetchPreviewTrack.mockImplementation(async (seed: string) => ({ id: "t1", title: seed }));
@@ -53,6 +58,9 @@ describe("createServer", () => {
     ]);
     summarizeVibe.mockImplementation(async () => ({ vibe: "chill" }));
     generateQueryText.mockImplementation(async () => ({ queryText: "dreamy indie pop female vocals" }));
+    generateJudgement.mockImplementation(async () => ({
+      judgement: "Your taste is wonderfully chaotic."
+    }));
   });
 
   it("returns health status", async () => {
@@ -279,6 +287,7 @@ describe("createServer", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("blocked_input");
+    expect(generateQueryText).not.toHaveBeenCalled();
   });
 
   it("accepts safe llm input", async () => {
@@ -290,7 +299,7 @@ describe("createServer", () => {
     expect(response.body.queryText).toBe("dreamy indie pop female vocals");
   });
 
-  it("returns user-safe retryable error when local llm is unavailable", async () => {
+  it("returns user-safe retryable error when Groq times out", async () => {
     const failingServer = createServer({
       api1Client: {
         fetchPreviewTrack: vi.fn(async (seed: string) => ({ id: "t1", title: seed }))
@@ -305,7 +314,8 @@ describe("createServer", () => {
         summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
         generateQueryText: vi.fn(async () => {
           throw new Error("timeout");
-        })
+        }),
+        generateJudgement: vi.fn()
       }
     });
 
@@ -316,7 +326,112 @@ describe("createServer", () => {
     expect(response.status).toBe(503);
     expect(response.body).toEqual({
       error: "query_text_unavailable",
-      message: "Could not generate your Spotify search text. Please retry."
+      message: "Could not generate your Spotify search text right now. Please retry."
     });
+  });
+
+  it("returns user-safe retryable error for Groq network and provider failures", async () => {
+    const networkFailingServer = createServer({
+      api1Client: {
+        fetchPreviewTrack: vi.fn(async (seed: string) => ({ id: "t1", title: seed }))
+      },
+      api2Client: {
+        fetchPair: vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }))
+      },
+      spotifyClient: {
+        searchTracks: vi.fn(async () => [])
+      },
+      llmClient: {
+        summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
+        generateQueryText: vi.fn(async () => {
+          throw new Error("network_error");
+        }),
+        generateJudgement: vi.fn()
+      }
+    });
+
+    const providerFailingServer = createServer({
+      api1Client: {
+        fetchPreviewTrack: vi.fn(async (seed: string) => ({ id: "t1", title: seed }))
+      },
+      api2Client: {
+        fetchPair: vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }))
+      },
+      spotifyClient: {
+        searchTracks: vi.fn(async () => [])
+      },
+      llmClient: {
+        summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
+        generateQueryText: vi.fn(async () => {
+          throw new Error("provider_status_error");
+        }),
+        generateJudgement: vi.fn()
+      }
+    });
+
+    const networkResponse = await request(networkFailingServer)
+      .post("/api/llm/route")
+      .send({ message: "I want chill indie vibes" });
+    const providerResponse = await request(providerFailingServer)
+      .post("/api/llm/route")
+      .send({ message: "I want chill indie vibes" });
+
+    expect(networkResponse.status).toBe(503);
+    expect(networkResponse.body).toEqual({
+      error: "query_text_unavailable",
+      message: "Could not generate your Spotify search text right now. Please retry."
+    });
+
+    expect(providerResponse.status).toBe(503);
+    expect(providerResponse.body).toEqual({
+      error: "query_text_unavailable",
+      message: "Could not generate your Spotify search text right now. Please retry."
+    });
+  });
+
+  it("supports chat-to-query-to-comparison handoff contract", async () => {
+    const handoffServer = createServer({
+      api1Client: {
+        fetchPreviewTrack: vi.fn(async (seed: string) => ({ id: "t1", title: seed }))
+      },
+      api2Client: {
+        fetchPair: vi.fn(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }))
+      },
+      spotifyClient: {
+        searchTracks: vi.fn(async ({ q }: { q: string }) => [
+          {
+            id: "track-1",
+            title: "Strobe Lights",
+            artistNames: ["DJ Test"],
+            uri: "spotify:track:track-1"
+          },
+          {
+            id: "track-2",
+            title: "Night Drive",
+            artistNames: ["DJ Test"],
+            uri: "spotify:track:track-2"
+          }
+        ])
+      },
+      llmClient: {
+        summarizeVibe: vi.fn(async () => ({ vibe: "chill" })),
+        generateQueryText: vi.fn(async () => ({ queryText: "dreamy   indie\tpop" })),
+        generateJudgement: vi.fn()
+      }
+    });
+
+    const llmResponse = await request(handoffServer)
+      .post("/api/llm/route")
+      .send({ message: "night drive with neon lights" });
+
+    expect(llmResponse.status).toBe(200);
+    expect(llmResponse.body).toEqual({ queryText: "dreamy   indie\tpop" });
+
+    const comparisonResponse = await request(handoffServer)
+      .get("/api/comparison/search")
+      .query({ q: llmResponse.body.queryText });
+
+    expect(comparisonResponse.status).toBe(200);
+    expect(comparisonResponse.body.candidates).toHaveLength(2);
   });
 });

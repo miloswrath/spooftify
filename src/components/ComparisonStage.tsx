@@ -5,6 +5,7 @@ interface TrackOption {
   id: string;
   title: string;
   uri: string;
+  artistNames?: string[];
 }
 
 interface ComparisonPair {

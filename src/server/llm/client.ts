@@ -1,8 +1,11 @@
 import type { LlmClient } from "../types";
 
-const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completions";
-const LOCAL_QWEN_MODEL_NAME = "zai-org/glm-4.7-flash";
-const LOCAL_QWEN_TIMEOUT_MS = 4_000;
+const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
+const DEFAULT_GROQ_MODEL_NAME = "llama-3.3-70b-versatile";
+const GROQ_TIMEOUT_MS = 8_000;
+const GROQ_JUDGEMENT_TIMEOUT_MS = 30_000;
+const MAX_QUERY_TEXT_KEYWORDS = 9;
+const NON_KEYWORD_CHARACTERS = /[^a-z0-9\s]+/g;
 
 const QUERY_TEXT_SYSTEM_PROMPT = [
   "You are a music intelligence engine that converts conversational emotional context into a high-quality Spotify search phrase.",
@@ -36,7 +39,21 @@ type OpenAiCompatibleResponse = {
   }>;
 };
 
-const normalizeQueryText = (value: string): string => value.trim().replace(/\s+/g, " ");
+const normalizeQueryText = (value: string): string => {
+  const normalized = value
+    .toLowerCase()
+    .replace(NON_KEYWORD_CHARACTERS, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  if (!normalized) {
+    return "";
+  }
+
+  return normalized.split(" ").slice(0, MAX_QUERY_TEXT_KEYWORDS).join(" ");
+};
+
+const normalizeJudgement = (value: string): string => value.trim();
 
 export function createLlmClient(): LlmClient {
   return {
@@ -47,24 +64,31 @@ export function createLlmClient(): LlmClient {
     },
     async generateQueryText(input: string) {
       const trimmedInput = input.trim();
+      const apiKey = process.env.GROQ_API_KEY?.trim();
+      const modelName = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL_NAME;
 
       if (!trimmedInput) {
         throw new Error("empty_input");
       }
 
+      if (!apiKey) {
+        throw new Error("missing_api_key");
+      }
+
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => {
         abortController.abort();
-      }, LOCAL_QWEN_TIMEOUT_MS);
+      }, GROQ_TIMEOUT_MS);
 
       try {
-        const response = await fetch(LOCAL_QWEN_CHAT_COMPLETIONS_URL, {
+        const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: LOCAL_QWEN_MODEL_NAME,
+            model: modelName,
             temperature: 0.2,
             max_tokens: 32,
             messages: [
@@ -99,6 +123,84 @@ export function createLlmClient(): LlmClient {
         }
 
         return { queryText };
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          // Log timeout for diagnostics
+          process.stderr.write(`[llm-client] generateQueryText timeout after ${GROQ_TIMEOUT_MS}ms\n`);
+          throw new Error("timeout");
+        }
+
+        if (error instanceof TypeError) {
+          throw new Error("network_error");
+        }
+
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
+    async generateJudgement(systemPrompt: string, userPrompt: string) {
+      const trimmedUserPrompt = userPrompt.trim();
+      const trimmedSystemPrompt = systemPrompt.trim();
+      const apiKey = process.env.GROQ_API_KEY?.trim();
+      const modelName = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL_NAME;
+
+      if (!trimmedUserPrompt || !trimmedSystemPrompt) {
+        throw new Error("empty_input");
+      }
+
+      if (!apiKey) {
+        throw new Error("missing_api_key");
+      }
+
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, GROQ_JUDGEMENT_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: modelName,
+            temperature: 0.7,
+            max_tokens: 512,
+            messages: [
+              {
+                role: "system",
+                content: trimmedSystemPrompt
+              },
+              {
+                role: "user",
+                content: trimmedUserPrompt
+              }
+            ]
+          }),
+          signal: abortController.signal
+        });
+
+        if (!response.ok) {
+          throw new Error("provider_status_error");
+        }
+
+        const payload = (await response.json()) as OpenAiCompatibleResponse;
+        const content = payload.choices?.[0]?.message?.content;
+
+        if (typeof content !== "string") {
+          throw new Error("invalid_response_body");
+        }
+
+        const judgement = normalizeJudgement(content);
+
+        if (!judgement) {
+          throw new Error("empty_output");
+        }
+
+        return { judgement };
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           throw new Error("timeout");
