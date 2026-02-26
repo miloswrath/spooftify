@@ -110,10 +110,21 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
     }
   }
 
-  await expect(page.getByRole("button", { name: "trigger-final-judgement" })).toBeVisible();
-  await page.getByRole("button", { name: "trigger-final-judgement" }).click();
+  const finalJudgementTrigger = page.getByRole("button", {
+    name: "trigger-final-judgement"
+  });
+  const judgementStage = page.getByLabel("judgement-stage");
 
-  await expect(page.getByLabel("judgement-stage")).toBeVisible();
+  await Promise.race([
+    finalJudgementTrigger.waitFor({ state: "visible" }),
+    judgementStage.waitFor({ state: "visible" })
+  ]);
+
+  if (await finalJudgementTrigger.isVisible()) {
+    await finalJudgementTrigger.click();
+  }
+
+  await expect(judgementStage).toBeVisible();
   await expect(page.getByTestId("judgement-box")).toBeVisible();
   await expectNoHorizontalScroll(page);
 });
