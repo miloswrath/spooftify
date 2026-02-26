@@ -3,13 +3,13 @@ import { expect, test, type Page } from "@playwright/test";
 const buildComparisonSearchPayload = () => ({
   candidates: Array.from({ length: 10 }, (_value, index) => {
     const trackNumber = index + 1;
+    const trackId = `E2ETRACK${trackNumber}`;
 
     return {
-      id: `e2e-track-${trackNumber}`,
+      id: trackId,
       title: `E2E Option ${trackNumber}`,
       artistNames: ["Test Artist"],
-      previewUrl: `https://audio.example/e2e-track-${trackNumber}.mp3`,
-      embedUrl: `https://open.spotify.com/embed/track/e2e-track-${trackNumber}`
+      uri: `spotify:track:${trackId}`
     };
   }),
   warning: null
@@ -50,6 +50,26 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
     });
   });
 
+  await page.route("**/api/judgement/route", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        judgement: "E2E judgement mock."
+      })
+    });
+  });
+
+  await page.route("https://open.spotify.com/oembed*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        iframe_url: "https://open.spotify.com/embed/track/e2e-mock"
+      })
+    });
+  });
+
   await page.goto("/");
 
   await expect(page.getByText("Spooftify")).toBeVisible();
@@ -71,10 +91,40 @@ test("mobile smoke flow reaches comparison and records one selection", async ({ 
 
   await expect(page.getByLabel("comparison-stage")).toBeVisible();
   await expect(page.getByText("Round 1 of 5")).toBeVisible();
+  await expect(page.getByLabel("swipe-selection-hint")).toBeVisible();
   await expectNoHorizontalScroll(page);
 
   await page.getByRole("button", { name: "choose-left-track" }).click();
 
   await expect(page.getByText("Round 2 of 5")).toBeVisible();
+  await expect(page.getByRole("button", { name: "trigger-final-judgement" })).not.toBeVisible();
+  await expectNoHorizontalScroll(page);
+
+  for (let round = 2; round <= 5; round += 1) {
+    await expect(page.getByRole("button", { name: "choose-left-track" })).toBeEnabled();
+    await page.getByRole("button", { name: "choose-left-track" }).click();
+
+    if (round < 5) {
+      await expect(page.getByText(`Round ${round + 1} of 5`)).toBeVisible();
+      await expect(page.getByRole("button", { name: "trigger-final-judgement" })).not.toBeVisible();
+    }
+  }
+
+  const finalJudgementTrigger = page.getByRole("button", {
+    name: "trigger-final-judgement"
+  });
+  const judgementStage = page.getByLabel("judgement-stage");
+
+  await Promise.race([
+    finalJudgementTrigger.waitFor({ state: "visible" }),
+    judgementStage.waitFor({ state: "visible" })
+  ]);
+
+  if (await finalJudgementTrigger.isVisible()) {
+    await finalJudgementTrigger.click();
+  }
+
+  await expect(judgementStage).toBeVisible();
+  await expect(page.getByTestId("judgement-box")).toBeVisible();
   await expectNoHorizontalScroll(page);
 });

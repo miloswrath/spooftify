@@ -13,12 +13,12 @@ After the above run the following with this file and constitution.md loaded into
 > ***{Checkpoint name}***
 > - [ ] what needs to get done
 > - [ ] what needs to get done
-> - [ ] A test
+> - [ ] {a test here for that checkpoint}
 > 
 > ***{Checkpoint name}***
 > - [ ] what needs to get done
 > - [ ] what needs to get done
-> - [ ] A test
+> - [ ] {a test here for that checkpoint}
 > 
-> Where checkpoints are shorter parts (variable in length) that can be their own commits with tests for each basic part of functionality. Make sure to follow the technical structure of this project as well.
+> Where checkpoints are shorter parts (variable in length) that can be their own commits with tests for each basic part of functionality. Make sure to follow the technical structure of this project as well. Add this to the document.
 

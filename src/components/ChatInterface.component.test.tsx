@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { App } from "../App";
 import { ChatInterface } from "./ChatInterface";
 
 describe("ChatInterface", () => {
@@ -271,8 +272,33 @@ describe("ChatInterface", () => {
     const sendButton = screen.getByRole("button", { name: "send-message" });
     const continueButton = screen.getByRole("button", { name: "continue-to-comparison" });
 
-    expect(input.getAttribute("style")).toContain("min-height: 44px");
-    expect(sendButton.getAttribute("style")).toContain("min-height: 44px");
-    expect(continueButton.getAttribute("style")).toContain("min-height: 44px");
+    expect(input.getAttribute("style")).toContain("min-height: 48px");
+    expect(sendButton.getAttribute("style")).toContain("min-height: 48px");
+    expect(continueButton.getAttribute("style")).toContain("min-height: 48px");
+  });
+
+  it("keeps chat content viewport-safe with a scrollable message region", () => {
+    const messages = Array.from({ length: 24 }, (_, index) => ({
+      id: `message-${index + 1}`,
+      role: index % 2 === 0 ? ("assistant" as const) : ("user" as const),
+      content: `Scrollable message ${index + 1}`
+    }));
+
+    render(<ChatInterface messages={messages} onSendMessage={vi.fn()} isThinking={false} />);
+
+    const chatInterface = screen.getByLabelText("chat-interface");
+    const messageContainer = screen.getByLabelText("chat-messages");
+
+    expect(chatInterface.getAttribute("style")).toContain("height: calc(100dvh - 180px)");
+    expect(chatInterface.getAttribute("style")).toContain("max-height: 760px");
+    expect(messageContainer.getAttribute("style")).toContain("overflow-y: auto");
+    expect(messageContainer.getAttribute("style")).toContain("min-height: 0");
+  });
+
+  it("does not show internal debug seed copy in the rendered chat flow", () => {
+    render(<App />);
+
+    expect(screen.getByLabelText("chat-stage")).toBeTruthy();
+    expect(screen.queryByText(/spotify seed:/i)).toBeNull();
   });
 });

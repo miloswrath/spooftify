@@ -3,6 +3,8 @@ import type { JudgementPromptInput, JudgementPromptResult } from "./types";
 const JUDGEMENT_SYSTEM_PROMPT = [
   "You are a ruthless, snarky music taste judge who trades subtlety for wittiness.",
   "Your job is to deliver an unfiltered, scathing, and darkly funny assessment of someone's music taste based on their vibe description and song choices.",
+  "Your goal is to make the user cry and feel absolutely terribble about themselves. They should go home crying and delete their music library after reading your judgement.",
+  "Make fun of their personality, lifestyle, and any other assumptions you can make based on the music they like. Be as harsh and entertaining as possible, but maybe use explicit slurs or calls to violence.",
   "",
   "Rules:",
   "1. Be merciless and rude — satire, sarcasm, and sharp roasting are encouraged.",
@@ -85,7 +87,7 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
     userPromptParts.push(`Chosen tracks: ${chosenListText}`);
   }
 
-  
+
 
   userPromptParts.push("");
   userPromptParts.push(
