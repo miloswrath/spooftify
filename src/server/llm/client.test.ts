@@ -267,10 +267,24 @@ describe("createLlmClient.generateJudgement", () => {
       judgement: "You have excellent taste."
     });
 
-    const [url, options] = fetchMock.mock.calls[0] as [
-      string,
-      { method: string; headers: Record<string, string>; body: string }
-    ];
+    const firstCall = fetchMock.mock.calls.at(0) as
+      | [
+        string,
+        {
+          method: string;
+          headers: Record<string, string>;
+          body: string;
+        }
+      ]
+      | undefined;
+
+    expect(firstCall).toBeDefined();
+
+    if (!firstCall) {
+      throw new Error("expected fetch call");
+    }
+
+    const [url, options] = firstCall;
 
     expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
     expect(options.method).toBe("POST");
