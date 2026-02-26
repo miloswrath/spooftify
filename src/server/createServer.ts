@@ -1,5 +1,5 @@
 import cors from "cors";
-import express from "express";
+import express, { type Request, type Response } from "express";
 import { createJudgementRoute } from "../app/api/judgement/route.js";
 import { sanitizeQueryText } from "../lib/queryText/index.js";
 import { isBlockedInput } from "./llm/abuseGuard.js";
@@ -136,24 +136,24 @@ export function createServer(deps: ServerDeps) {
   app.use(cors());
   app.use(express.json());
 
-  app.get("/health", (_req, res) => {
+  app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ ok: true });
   });
 
-  app.get("/api/api1/route", async (req, res) => {
+  app.get("/api/api1/route", async (req: Request, res: Response) => {
     const rawSeed = typeof req.query.seed === "string" ? req.query.seed : "default";
     const seed = sanitizeQueryText(rawSeed) || "default";
     const track = await deps.api1Client.fetchPreviewTrack(seed);
     res.status(200).json(track);
   });
 
-  app.get("/api/api2/route", async (req, res) => {
+  app.get("/api/api2/route", async (req: Request, res: Response) => {
     const vibe = typeof req.query.vibe === "string" ? req.query.vibe : "neutral";
     const pair = await deps.api2Client.fetchPair(vibe);
     res.status(200).json(pair);
   });
 
-  app.get("/api/comparison/search", async (req, res) => {
+  app.get("/api/comparison/search", async (req: Request, res: Response) => {
     const rawQueryText = typeof req.query.q === "string" ? req.query.q : "";
     const queryText = sanitizeQueryText(rawQueryText);
 
@@ -222,7 +222,7 @@ export function createServer(deps: ServerDeps) {
     }
   });
 
-  app.post("/api/llm/route", async (req, res) => {
+  app.post("/api/llm/route", async (req: Request, res: Response) => {
     const message = typeof req.body?.message === "string" ? req.body.message : "";
 
     if (isBlockedInput(message)) {

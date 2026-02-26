@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { RequestHandler } from "express";
 import type { ComparisonRoundChoice } from "../../../features/comparison/types.js";
 import { buildJudgementPrompt, buildJudgementSystemPrompt } from "../../../features/judgement/promptBuilder.js";
 import type {
@@ -47,16 +47,7 @@ const isValidJudgementRequest = (body: unknown): body is JudgementRequestBody =>
 };
 
 const createJudgementApiHandler = (llmClient: LlmClient) => {
-  return async (req: Request, res: Response<JudgementResponse>) => {
-    // Validate request method
-    if (req.method !== "POST") {
-      res.status(405).json({
-        code: "llm_error",
-        message: "Method not allowed"
-      });
-      return;
-    }
-
+  const handler: RequestHandler<Record<string, string>, JudgementResponse, JudgementRequestBody> = async (req, res) => {
     // Validate request body structure
     if (!isValidJudgementRequest(req.body)) {
       res.status(400).json({
@@ -127,6 +118,8 @@ const createJudgementApiHandler = (llmClient: LlmClient) => {
       }
     }
   };
+
+  return handler;
 };
 
 export function createJudgementRoute(llmClient: LlmClient) {
