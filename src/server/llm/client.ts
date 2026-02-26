@@ -3,11 +3,9 @@ import type { LlmClient } from "../types.js";
 const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_GROQ_MODEL_NAME = "llama-3.3-70b-versatile";
 const GROQ_TIMEOUT_MS = 8_000;
+const GROQ_JUDGEMENT_TIMEOUT_MS = 30_000;
 const MAX_QUERY_TEXT_KEYWORDS = 9;
 const NON_KEYWORD_CHARACTERS = /[^a-z0-9\s]+/g;
-const LOCAL_QWEN_CHAT_COMPLETIONS_URL = "http://127.0.0.1:1234/v1/chat/completions";
-const LOCAL_QWEN_MODEL_NAME = "Qwen2.5 Coder 7B Instruct";
-const LOCAL_QWEN_TIMEOUT_MS = 300_000;
 
 const QUERY_TEXT_SYSTEM_PROMPT = [
   "You are a music intelligence engine that converts conversational emotional context into a high-quality Spotify search phrase.",
@@ -144,24 +142,31 @@ export function createLlmClient(): LlmClient {
     async generateJudgement(systemPrompt: string, userPrompt: string) {
       const trimmedUserPrompt = userPrompt.trim();
       const trimmedSystemPrompt = systemPrompt.trim();
+      const apiKey = process.env.GROQ_API_KEY?.trim();
+      const modelName = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL_NAME;
 
       if (!trimmedUserPrompt || !trimmedSystemPrompt) {
         throw new Error("empty_input");
       }
 
+      if (!apiKey) {
+        throw new Error("missing_api_key");
+      }
+
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => {
         abortController.abort();
-      }, LOCAL_QWEN_TIMEOUT_MS);
+      }, GROQ_JUDGEMENT_TIMEOUT_MS);
 
       try {
-        const response = await fetch(LOCAL_QWEN_CHAT_COMPLETIONS_URL, {
+        const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: LOCAL_QWEN_MODEL_NAME,
+            model: modelName,
             temperature: 0.7,
             max_tokens: 512,
             messages: [

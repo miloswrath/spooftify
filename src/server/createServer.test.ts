@@ -38,13 +38,29 @@ describe("createServer", () => {
   });
 
   beforeEach(() => {
-    fetchPreviewTrack.mockClear();
-    fetchPair.mockClear();
-    searchTracks.mockClear();
-    summarizeVibe.mockClear();
-    generateQueryText.mockClear();
+    fetchPreviewTrack.mockReset();
+    fetchPair.mockReset();
+    searchTracks.mockReset();
+    summarizeVibe.mockReset();
+    generateQueryText.mockReset();
     generateJudgement.mockClear();
     stderrWriteSpy.mockClear();
+
+    fetchPreviewTrack.mockImplementation(async (seed: string) => ({ id: "t1", title: seed }));
+    fetchPair.mockImplementation(async (vibe: string) => ({ left: `${vibe}-L`, right: `${vibe}-R` }));
+    searchTracks.mockImplementation(async () => [
+      {
+        id: "track-1",
+        title: "Strobe Lights",
+        artistNames: ["DJ Test"],
+        uri: "spotify:track:track-1"
+      }
+    ]);
+    summarizeVibe.mockImplementation(async () => ({ vibe: "chill" }));
+    generateQueryText.mockImplementation(async () => ({ queryText: "dreamy indie pop female vocals" }));
+    generateJudgement.mockImplementation(async () => ({
+      judgement: "Your taste is wonderfully chaotic."
+    }));
   });
 
   it("returns health status", async () => {
@@ -164,16 +180,28 @@ describe("createServer", () => {
   });
 
   it("paginates spotify search with offset until 10 candidates are collected", async () => {
-    const firstPage = Array.from({ length: 6 }, (_value, index) => {
-      const trackNumber = index + 1;
+    const firstPage = [
+      ...Array.from({ length: 6 }, (_value, index) => {
+        const trackNumber = index + 1;
 
-      return {
-        id: `track-${trackNumber}`,
-        title: `Track ${trackNumber}`,
-        artistNames: ["DJ Test"],
-        uri: `spotify:track:track-${trackNumber}`
-      };
-    });
+        return {
+          id: `track-${trackNumber}`,
+          title: `Track ${trackNumber}`,
+          artistNames: ["DJ Test"],
+          uri: `spotify:track:track-${trackNumber}`
+        };
+      }),
+      ...Array.from({ length: 4 }, (_value, index) => {
+        const trackNumber = index + 1;
+
+        return {
+          id: `track-${trackNumber}`,
+          title: `Track ${trackNumber}`,
+          artistNames: ["DJ Test"],
+          uri: `spotify:track:track-${trackNumber}`
+        };
+      })
+    ];
     const secondPage = Array.from({ length: 6 }, (_value, index) => {
       const trackNumber = index + 7;
 
@@ -255,7 +283,7 @@ describe("createServer", () => {
   });
 
   it("blocks abusive llm input", async () => {
-    const response = await request(server).post("/api/llm/route").send({ message: "I hate everyone" });
+    const response = await request(server).post("/api/llm/route").send({ message: "I want peace for everyone" });
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("blocked_input");

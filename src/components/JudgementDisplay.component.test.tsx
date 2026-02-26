@@ -259,7 +259,7 @@ describe("JudgementDisplay", () => {
   });
 
   describe("Responsive Layout", () => {
-    it("renders with mobile-first styling (90vw width)", () => {
+    it("renders stage and panel containers with responsive class hooks", () => {
       const mockRetry = vi.fn();
       const mockNewSession = vi.fn();
 
@@ -271,15 +271,14 @@ describe("JudgementDisplay", () => {
         />
       );
 
+      const stage = screen.getByLabelText("judgement-stage");
       const box = screen.getByTestId("judgement-box");
-      const styles = window.getComputedStyle(box);
 
-      // Verify mobile-first box styling
-      expect(box.style.width).toMatch(/90vw/);
-      expect(box.style.maxWidth).toBe("500px");
+      expect(stage.className).toContain("judgement-stage");
+      expect(box.className).toContain("judgement-stage__panel");
     });
 
-    it("container uses full viewport height with flex centering", () => {
+    it("uses semantic section wrapper for stage-level layout", () => {
       const mockRetry = vi.fn();
       const mockNewSession = vi.fn();
 
@@ -292,13 +291,11 @@ describe("JudgementDisplay", () => {
       );
 
       const mainContainer = container.firstChild as HTMLElement;
-      expect(mainContainer.style.minHeight).toBe("100vh");
-      expect(mainContainer.style.display).toBe("flex");
-      expect(mainContainer.style.justifyContent).toBe("center");
-      expect(mainContainer.style.alignItems).toBe("center");
+      expect(mainContainer.tagName).toBe("SECTION");
+      expect(mainContainer.getAttribute("aria-label")).toBe("judgement-stage");
     });
 
-    it("background is black with white text container", () => {
+    it("applies dark-theme class hooks to container and panel", () => {
       const mockRetry = vi.fn();
       const mockNewSession = vi.fn();
 
@@ -311,11 +308,10 @@ describe("JudgementDisplay", () => {
       );
 
       const mainContainer = container.firstChild as HTMLElement;
-      expect(mainContainer.style.backgroundColor).toMatch(/^(#000000|rgb\(0, 0, 0\))$/);
+      expect(mainContainer.className).toContain("judgement-stage");
 
       const box = screen.getByTestId("judgement-box");
-      expect(box.style.backgroundColor).toMatch(/^(#ffffff|rgb\(255, 255, 255\))$/);
-      expect(box.style.color).toMatch(/^(#000000|rgb\(0, 0, 0\))$/);
+      expect(box.className).toContain("judgement-stage__panel");
     });
 
     it("renders correctly on 375px mobile viewport (snapshot test)", () => {
@@ -348,11 +344,11 @@ describe("JudgementDisplay", () => {
       expect(container.firstChild).toMatchSnapshot();
     });
 
-    it("has no horizontal overflow on 375px viewport", () => {
+    it("wraps long text in the dedicated copy container", () => {
       const mockRetry = vi.fn();
       const mockNewSession = vi.fn();
 
-      const { container } = render(
+      render(
         <JudgementDisplay
           judgement="You've got eclectic taste with a love for introspection—the kind of person who curates playlists like they're building a personality."
           onRetry={mockRetry}
@@ -360,20 +356,14 @@ describe("JudgementDisplay", () => {
         />
       );
 
-      const mainContainer = container.firstChild as HTMLElement;
       const box = screen.getByTestId("judgement-box");
+      const copy = screen.getByText(/curates playlists like they're building a personality/i);
 
-      // Verify no overflow properties set
-      expect(mainContainer.style.overflow).not.toBe("auto");
-      expect(mainContainer.style.overflow).not.toBe("scroll");
-      expect(box.style.overflow).not.toBe("auto");
-      expect(box.style.overflow).not.toBe("scroll");
-
-      // Check box-sizing for proper width calculation
-      expect(box.style.boxSizing).toBe("border-box");
+      expect(box.className).toContain("judgement-stage__panel");
+      expect(copy.className).toContain("judgement-stage__copy");
     });
 
-    it("button container is responsive and doesn't overflow", () => {
+    it("button container uses responsive action layout classes", () => {
       const mockRetry = vi.fn();
       const mockNewSession = vi.fn();
 
@@ -386,9 +376,11 @@ describe("JudgementDisplay", () => {
       );
 
       const button = screen.getByRole("button", { name: "Start New Session" });
+      const actionContainer = button.parentElement as HTMLElement;
+
       expect(button).toBeTruthy();
-      // Button should be accessible and not cause scrolling
-      expect(button.style.minWidth).toBe("120px");
+      expect(actionContainer.className).toContain("judgement-stage__actions");
+      expect(button.className).toContain("judgement-stage__button--primary");
     });
   });
 

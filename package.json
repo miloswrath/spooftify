@@ -20,6 +20,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.9.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "react": "^19.1.1",

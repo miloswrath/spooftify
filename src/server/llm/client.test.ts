@@ -230,3 +230,98 @@ describe("createLlmClient.generateQueryText", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("createLlmClient.generateJudgement", () => {
+  const originalGroqApiKey = process.env.GROQ_API_KEY;
+  const originalGroqModel = process.env.GROQ_MODEL;
+
+  afterEach(() => {
+    process.env.GROQ_API_KEY = originalGroqApiKey;
+    process.env.GROQ_MODEL = originalGroqModel;
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("builds a Groq OpenAI-compatible request and returns trimmed judgement text", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: "  You have excellent taste.  "
+            }
+          }
+        ]
+      })
+    }));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createLlmClient();
+    const result = await client.generateJudgement("system prompt", "user prompt");
+
+    expect(result).toEqual({
+      judgement: "You have excellent taste."
+    });
+
+    const [url, options] = fetchMock.mock.calls[0] as [
+      string,
+      { method: string; headers: Record<string, string>; body: string }
+    ];
+
+    expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
+    expect(options.method).toBe("POST");
+    expect(options.headers["Content-Type"]).toBe("application/json");
+    expect(options.headers.Authorization).toBe("Bearer test-groq-key");
+
+    const payload = JSON.parse(options.body);
+    expect(payload.model).toBe("llama-3.3-70b-versatile");
+    expect(payload.messages).toEqual([
+      {
+        role: "system",
+        content: "system prompt"
+      },
+      {
+        role: "user",
+        content: "user prompt"
+      }
+    ]);
+  });
+
+  it("rejects with timeout when Groq judgement request exceeds timeout", async () => {
+    process.env.GROQ_API_KEY = "test-groq-key";
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn((_url: string, options?: { signal?: AbortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => {
+          reject(new DOMException("The operation was aborted.", "AbortError"));
+        });
+      });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createLlmClient();
+    const pendingResult = client.generateJudgement("system", "user");
+    const timeoutExpectation = expect(pendingResult).rejects.toThrow("timeout");
+
+    await vi.advanceTimersByTimeAsync(30_100);
+    await timeoutExpectation;
+  });
+
+  it("rejects with missing_api_key when GROQ_API_KEY is not configured", async () => {
+    delete process.env.GROQ_API_KEY;
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createLlmClient();
+
+    await expect(client.generateJudgement("system", "user")).rejects.toThrow("missing_api_key");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
