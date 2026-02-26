@@ -85,7 +85,7 @@ export function buildJudgementPrompt(input: JudgementPromptInput): JudgementProm
     userPromptParts.push(`Chosen tracks: ${chosenListText}`);
   }
 
-  
+
 
   userPromptParts.push("");
   userPromptParts.push(
